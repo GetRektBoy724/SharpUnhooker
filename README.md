@@ -7,7 +7,6 @@ This tool is based off [this article](https://ired.team/offensive-security/defen
 # Notes
 - If you want to copy the code,Pls dont change/remove the banner
 - My Sublime kinda fucked up the Indentation so dont roast me,but its still works tho
-- Dont be a script kiddie,lmao 😂
 - It have NTAPI list hardcoded (which makes the file large,sorry)
 - If you have the code to read all the available API in the NTDLL,pls contact me add Discord : DeadSec#4077
 
