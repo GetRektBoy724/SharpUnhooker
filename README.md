@@ -1,5 +1,5 @@
 # SharpUnhooker
-C# Based NTAPI Unhooker - Automaticly Unhook The Specified NTAPI Or Unhook Almost All NTAPIs In Once.Currently it has ntdll hardcoded, but there is no reason why you couldn't use it to unhook any other API. Make sure you use the full path for the dll.
+C# Based NTAPI Unhooker - Automaticaly Unhook The Specified NTAPI Or Unhook Almost All NTAPIs In One.Currently it has ntdll hardcoded, but there is no reason why you couldn't use it to unhook any other API. Make sure you use the full path for the dll.
 Use it as many times as needed in your code to unhook all the APIs you want/need to for whatever reason.
 There are some debugging `Console.WriteLine` you might want to remove for stealth reasons, but I left them for your testing.
 This tool is based off [this article](https://ired.team/offensive-security/defense-evasion/bypassing-cylance-and-other-avs-edrs-by-unhooking-windows-apis) by @spotheplanet.
