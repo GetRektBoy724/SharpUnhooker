@@ -25,14 +25,14 @@ public class SharpUnhooker {
     public static void UnhookNT(string IWantToUnhookThisAPI) {
     	Console.WriteLine("----------------------------------------");
     	IntPtr originallib = LoadLibrary("C:/Windows/System32/ntdll.dll");
-    	byte[] assemblyBytes = new byte[5];
+    	byte[] assemblyBytes = new byte[10];
     	if (originallib != IntPtr.Zero) {
     		Console.WriteLine("Yay!Got original ntdll handle.");
 	    	IntPtr readOriginalAPI = GetProcAddress(originallib, IWantToUnhookThisAPI);
 	    	if (readOriginalAPI != IntPtr.Zero) {
 	    		Console.WriteLine(String.Format("Yay!got address for {0}", IWantToUnhookThisAPI));
 	    		Console.WriteLine("Reading Original API...");
-    			Marshal.Copy(readOriginalAPI, assemblyBytes, 0, 5);
+    			Marshal.Copy(readOriginalAPI, assemblyBytes, 0, 10);
 	    		if (assemblyBytes != null && assemblyBytes.Length > 0) {
 					Console.WriteLine("Yay!Original API Readed.");
 					Console.WriteLine(BitConverter.ToString(assemblyBytes));
@@ -43,14 +43,14 @@ public class SharpUnhooker {
 	    				Console.WriteLine("Yay!Memory protection setting updated!");
 	    				Console.WriteLine("Applying patch...");
 	    				IntPtr WPMOutput;
-						bool patchdll = WriteProcessMemory(Process.GetCurrentProcess().Handle, GetProcAddress(GetModuleHandle("ntdll"), IWantToUnhookThisAPI), assemblyBytes, 5, out WPMOutput);
+						bool patchdll = WriteProcessMemory(Process.GetCurrentProcess().Handle, GetProcAddress(GetModuleHandle("ntdll"), IWantToUnhookThisAPI), assemblyBytes, assemblyBytes.Length, out WPMOutput);
 						if (patchdll) {
 							Console.WriteLine("Yay!Patch applied!");
 							FreeLibrary(originallib);
 							Console.WriteLine("Rechecking Loaded API After Patching...");
-							byte[] assemblyBytesAfterPatched = new byte[5];
+							byte[] assemblyBytesAfterPatched = new byte[10];
 							IntPtr readPatchedAPI = GetProcAddress(GetModuleHandle("ntdll"), IWantToUnhookThisAPI);
-							Marshal.Copy(readPatchedAPI, assemblyBytesAfterPatched, 0, 5);
+							Marshal.Copy(readPatchedAPI, assemblyBytesAfterPatched, 0, 10);
 							Console.WriteLine(BitConverter.ToString(assemblyBytesAfterPatched));
 							bool checkAssemblyBytesAfterPatched = assemblyBytesAfterPatched.SequenceEqual(assemblyBytes);
 							if (!checkAssemblyBytesAfterPatched) {
@@ -77,22 +77,22 @@ public class SharpUnhooker {
     }
     public static void UnhookNTSilent(string IWantToUnhookThisAPI) {
     	IntPtr originallib = LoadLibrary("C:/Windows/System32/ntdll.dll");
-    	byte[] assemblyBytes = new byte[5];
+    	byte[] assemblyBytes = new byte[10];
     	if (originallib != IntPtr.Zero) {
 	    	IntPtr readOriginalAPI = GetProcAddress(originallib, IWantToUnhookThisAPI);
 	    	if (readOriginalAPI != IntPtr.Zero) {
-    			Marshal.Copy(readOriginalAPI, assemblyBytes, 0, 5);
+    			Marshal.Copy(readOriginalAPI, assemblyBytes, 0, 10);
 	    		if (assemblyBytes != null && assemblyBytes.Length > 0) {
 	    			uint oldProtect;
 	    			bool updateProtection = VirtualProtect(GetProcAddress(GetModuleHandle("ntdll"), IWantToUnhookThisAPI), (UIntPtr)assemblyBytes.Length, 0x40, out oldProtect);
 					if (updateProtection) {
 						IntPtr WPMOutput;
-						bool patchdll = WriteProcessMemory(Process.GetCurrentProcess().Handle, GetProcAddress(GetModuleHandle("ntdll"), IWantToUnhookThisAPI), assemblyBytes, 5, out WPMOutput);
+						bool patchdll = WriteProcessMemory(Process.GetCurrentProcess().Handle, GetProcAddress(GetModuleHandle("ntdll"), IWantToUnhookThisAPI), assemblyBytes, assemblyBytes.Length, out WPMOutput);
 						if (patchdll) {
 							FreeLibrary(originallib);
-							byte[] assemblyBytesAfterPatched = new byte[5];
+							byte[] assemblyBytesAfterPatched = new byte[10];
 							IntPtr readPatchedAPI = GetProcAddress(GetModuleHandle("ntdll"), IWantToUnhookThisAPI);
-							Marshal.Copy(readPatchedAPI, assemblyBytesAfterPatched, 0, 5);
+							Marshal.Copy(readPatchedAPI, assemblyBytesAfterPatched, 0, 10);
 							bool checkAssemblyBytesAfterPatched = assemblyBytesAfterPatched.SequenceEqual(assemblyBytes);
 							if (!checkAssemblyBytesAfterPatched) {
 								Console.WriteLine("Patched API Bytes Doesnt Match With Desired API Bytes! API Is Probably Still Hooked.");
