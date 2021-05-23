@@ -17,5 +17,5 @@ Simply load the pre-compiled DLL or add the code function and call the function 
 ```
 
 # To-Do List
-- Instead of only patching the first 10 byte of the API,I want to read the whole `.text section` of the original DLL and patch the loaded DLL with that.
-- Add ETW and AMSI patch to bypass them
+- Instead of only patching the first 10 byte of the API,I want to read the whole `.text section` of the original DLL and patch the loaded DLL with that. (in progress,it is indeed pretty difficult)
+- Add ETW and AMSI patch to bypass them (done,only need to implement to main code)
