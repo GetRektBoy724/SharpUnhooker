@@ -11,16 +11,16 @@ The data is then copied into the right region of memory by using each functionâ€
 In order to do this, ScareCrow changes the permissions of the .text region of memory using VirtualProtect. 
 Even though this is a system DLL, since it has been loaded into our process (that we control), we can change the memory permissions without requiring elevated privileges.
 ```
+### This tool is tested on Windows 10 v20H2 
 
 # Notes
 - If you want to copy the code,Pls dont change/remove the banner
 - My Sublime kinda fucked up the Indentation so dont roast me,but its still works tho
 
 # Usage
-Simply load the pre-compiled DLL or add the code function and call the function with 
-```
-[SharpUnhooker]::Main();
-```
+Simply load the pre-compiled DLL or add the code function and call the function.
+You can load the pre-compiled DLL on Powershell with Reflection.Assembly too!
+This code uses C# 5,so it can be compiled with the built-in CSC from Windows 10.
 
 # To-Do List
 - Implement D\Invoke
