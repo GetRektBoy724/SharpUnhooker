@@ -18,7 +18,7 @@ Even though this is a system DLL, since it has been loaded into our process (tha
 - My Sublime kinda fucked up the Indentation so dont roast me,but its still works tho
 
 # Usage
-Simply load the pre-compiled DLL or add the code function and call the function.
+Simply load the pre-compiled DLL or add the code function and call the function main function from the SharpUnhooker class.
 You can load the pre-compiled DLL on Powershell with Reflection.Assembly too!
 This code uses C# 5,so it can be compiled with the built-in CSC from Windows 10.
 
