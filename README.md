@@ -1,7 +1,7 @@
 # SharpUnhooker
 C# Based Universal API Unhooker - Automatically Unhook API Hives (ntdll.dll,kernel32.dll,user32.dll,and kernelbase.dll).
 you might want to use the `SilentUnhooker` function instead of the `Unhooker` for stealth reasons.
-This tool is based off [this tool](https://github.com/optiv/ScareCrow/).
+This tool is inspired by [this tool](https://github.com/optiv/ScareCrow/).
 ```
 When executed, ScareCrow will copy the bytes of the system DLLs stored on disk in C:\Windows\System32\. 
 These DLLs are stored on disk “clean” of EDR hooks because they are used by the system to load an unaltered copy into a new process when it’s spawned. 
