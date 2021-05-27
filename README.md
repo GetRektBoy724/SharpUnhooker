@@ -26,5 +26,5 @@ This code uses C# 5,so it can be compiled with the built-in CSC from Windows 10.
 
 
 # To-Do List
-- Implement D\Invoke
+- Implement D\Invoke (i only need the delegates for the APIs)
 - Add ability to unhook IAT hooks
