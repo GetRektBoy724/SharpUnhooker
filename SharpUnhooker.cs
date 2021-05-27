@@ -487,36 +487,43 @@ public class SharpUnhooker {
                 int TextSectionNumber = i;
                 if (assemblyBytes != null && assemblyBytes.Length > 0) {
 					Console.WriteLine("Yay!Original DLL Readed.");
-					Console.WriteLine("Calculating .text section pointer in loaded DLL...");
-					IntPtr InMemorySectionPointer = (GetModuleHandle(DLLname)) + (int)OriginalDLL.ImageSectionHeaders[TextSectionNumber].VirtualAddress;
-					Console.WriteLine("Calculation done! .text pointer in loaded DLL : {0}", InMemorySectionPointer.ToString("X4"));
-					Console.WriteLine("Updating memory protection setting...");
-					uint oldProtect;
-	    			bool updateProtection = VirtualProtect(InMemorySectionPointer, (UIntPtr)assemblyBytes.Length, 0x40, out oldProtect);
-	    			if (updateProtection) {
-	    				Console.WriteLine("Yay!Memory protection setting updated!");
-	    				Console.WriteLine("Applying patch...");
-	    				IntPtr WPMOutput;
-						bool patchdll = WriteProcessMemory(Process.GetCurrentProcess().Handle, InMemorySectionPointer, assemblyBytes, assemblyBytes.Length, out WPMOutput);
-						if (patchdll) {
-							Console.WriteLine("Yay!Patch applied!");
-							Console.WriteLine("Rechecking Loaded API After Patching...");
-							byte[] assemblyBytesAfterPatched = new byte[OriginalDLL.ImageSectionHeaders[TextSectionNumber].SizeOfRawData];
-							IntPtr readPatchedAPI = InMemorySectionPointer;
-							Marshal.Copy(readPatchedAPI, assemblyBytesAfterPatched, 0, (int)OriginalDLL.ImageSectionHeaders[TextSectionNumber].SizeOfRawData);
-							bool checkAssemblyBytesAfterPatched = assemblyBytesAfterPatched.SequenceEqual(assemblyBytes);
-							uint newProtect;
-							VirtualProtect(InMemorySectionPointer, (UIntPtr)assemblyBytes.Length, oldProtect, out newProtect);
-							if (!checkAssemblyBytesAfterPatched) {
-								Console.WriteLine("[-] Patched API Bytes Doesnt Match With Desired API Bytes! API Is Probably Still Hooked! [-]");
+					Console.WriteLine("Getting in-memory module handle...");
+					IntPtr ModuleHandleInMemory = (Process.GetCurrentProcess().Modules.Cast<ProcessModule>().Where(x => DLLname.Equals(Path.GetFileName(x.FileName), StringComparison.OrdinalIgnoreCase)).FirstOrDefault().BaseAddress);
+					if (ModuleHandleInMemory != IntPtr.Zero) {
+						Console.WriteLine("Yay!Got module handle : {0}", ModuleHandleInMemory.ToString("X4"));
+						Console.WriteLine("Calculating .text section pointer in loaded DLL...");
+						IntPtr InMemorySectionPointer = ModuleHandleInMemory + (int)OriginalDLL.ImageSectionHeaders[TextSectionNumber].VirtualAddress;
+						Console.WriteLine("Calculation done! .text pointer in loaded DLL : {0}", InMemorySectionPointer.ToString("X4"));
+						Console.WriteLine("Updating memory protection setting...");
+						uint oldProtect;
+		    			bool updateProtection = VirtualProtect(InMemorySectionPointer, (UIntPtr)assemblyBytes.Length, 0x40, out oldProtect);
+		    			if (updateProtection) {
+		    				Console.WriteLine("Yay!Memory protection setting updated!");
+		    				Console.WriteLine("Applying patch...");
+		    				IntPtr WPMOutput;
+							bool patchdll = WriteProcessMemory(Process.GetCurrentProcess().Handle, InMemorySectionPointer, assemblyBytes, assemblyBytes.Length, out WPMOutput);
+							if (patchdll) {
+								Console.WriteLine("Yay!Patch applied!");
+								Console.WriteLine("Rechecking Loaded API After Patching...");
+								byte[] assemblyBytesAfterPatched = new byte[OriginalDLL.ImageSectionHeaders[TextSectionNumber].SizeOfRawData];
+								IntPtr readPatchedAPI = InMemorySectionPointer;
+								Marshal.Copy(readPatchedAPI, assemblyBytesAfterPatched, 0, (int)OriginalDLL.ImageSectionHeaders[TextSectionNumber].SizeOfRawData);
+								bool checkAssemblyBytesAfterPatched = assemblyBytesAfterPatched.SequenceEqual(assemblyBytes);
+								uint newProtect;
+								VirtualProtect(InMemorySectionPointer, (UIntPtr)assemblyBytes.Length, oldProtect, out newProtect);
+								if (!checkAssemblyBytesAfterPatched) {
+									Console.WriteLine("[-] Patched API Bytes Doesnt Match With Desired API Bytes! API Is Probably Still Hooked! [-]");
+								}else {
+									Console.WriteLine("[+++] Chill Out,Everything Is Fine.Which Means API Is Unhooked! [+++]");
+								}
 							}else {
-								Console.WriteLine("[+++] Chill Out,Everything Is Fine.Which Means API Is Unhooked! [+++]");
+								Console.WriteLine("[-] Patch unsucessful! [-]");
 							}
-						}else {
-							Console.WriteLine("[-] Patch unsucessful! [-]");
+		    			}else {
+							Console.WriteLine("[-] Failed to update memory protection setting! [-]");
 						}
-	    			}else {
-						Console.WriteLine("[-] Failed to update memory protection setting! [-]");
+					}else {
+						Console.WriteLine("[-] Failed to get handle of in-memory module! [-]");
 					}
 	    		}else {
 	    			Console.WriteLine("[-] Reading original DLL from disk failed! [-]");
@@ -547,29 +554,33 @@ public class SharpUnhooker {
                 Marshal.Copy(byteLocationOnMemory, assemblyBytes, 0, (int)OriginalDLL.ImageSectionHeaders[i].SizeOfRawData);
                 int TextSectionNumber = i;
                 if (assemblyBytes != null && assemblyBytes.Length > 0) {
-					IntPtr InMemorySectionPointer = (GetModuleHandle(DLLname)) + (int)OriginalDLL.ImageSectionHeaders[TextSectionNumber].VirtualAddress;
-					uint oldProtect;
-	    			bool updateProtection = VirtualProtect(InMemorySectionPointer, (UIntPtr)assemblyBytes.Length, 0x40, out oldProtect);
-	    			if (updateProtection) {
-	    				IntPtr WPMOutput;
-						bool patchdll = WriteProcessMemory(Process.GetCurrentProcess().Handle, InMemorySectionPointer, assemblyBytes, assemblyBytes.Length, out WPMOutput);
-						if (patchdll) {
-							byte[] assemblyBytesAfterPatched = new byte[OriginalDLL.ImageSectionHeaders[TextSectionNumber].SizeOfRawData];
-							IntPtr readPatchedAPI = InMemorySectionPointer;
-							Marshal.Copy(readPatchedAPI, assemblyBytesAfterPatched, 0, (int)OriginalDLL.ImageSectionHeaders[TextSectionNumber].SizeOfRawData);
-							bool checkAssemblyBytesAfterPatched = assemblyBytesAfterPatched.SequenceEqual(assemblyBytes);
-							uint newProtect;
-							VirtualProtect(InMemorySectionPointer, (UIntPtr)assemblyBytes.Length, oldProtect, out newProtect);
-							if (!checkAssemblyBytesAfterPatched) {
-								Console.WriteLine("[-] Patched API Bytes Doesnt Match With Desired API Bytes! API Is Probably Still Hooked! [-]");
+					IntPtr ModuleHandleInMemory = (Process.GetCurrentProcess().Modules.Cast<ProcessModule>().Where(x => DLLname.Equals(Path.GetFileName(x.FileName), StringComparison.OrdinalIgnoreCase)).FirstOrDefault().BaseAddress);
+					if (ModuleHandleInMemory != IntPtr.Zero) {
+						IntPtr InMemorySectionPointer = ModuleHandleInMemory + (int)OriginalDLL.ImageSectionHeaders[TextSectionNumber].VirtualAddress;					uint oldProtect;
+		    			bool updateProtection = VirtualProtect(InMemorySectionPointer, (UIntPtr)assemblyBytes.Length, 0x40, out oldProtect);
+		    			if (updateProtection) {
+		    				IntPtr WPMOutput;
+							bool patchdll = WriteProcessMemory(Process.GetCurrentProcess().Handle, InMemorySectionPointer, assemblyBytes, assemblyBytes.Length, out WPMOutput);
+							if (patchdll) {
+								byte[] assemblyBytesAfterPatched = new byte[OriginalDLL.ImageSectionHeaders[TextSectionNumber].SizeOfRawData];
+								IntPtr readPatchedAPI = InMemorySectionPointer;
+								Marshal.Copy(readPatchedAPI, assemblyBytesAfterPatched, 0, (int)OriginalDLL.ImageSectionHeaders[TextSectionNumber].SizeOfRawData);
+								bool checkAssemblyBytesAfterPatched = assemblyBytesAfterPatched.SequenceEqual(assemblyBytes);
+								uint newProtect;
+								VirtualProtect(InMemorySectionPointer, (UIntPtr)assemblyBytes.Length, oldProtect, out newProtect);
+								if (!checkAssemblyBytesAfterPatched) {
+									Console.WriteLine("[-] Patched API Bytes Doesnt Match With Desired API Bytes! API Is Probably Still Hooked! [-]");
+								}else {
+									Console.WriteLine("[+++] API IS UNHOOKED! [+++]");
+								}
 							}else {
-								Console.WriteLine("[+++] API IS UNHOOKED! [+++]");
+								Console.WriteLine("[-] Patch unsucessful! [-]");
 							}
-						}else {
-							Console.WriteLine("[-] Patch unsucessful! [-]");
+		    			}else {
+							Console.WriteLine("[-] Failed to update memory protection setting! [-]");
 						}
-	    			}else {
-						Console.WriteLine("[-] Failed to update memory protection setting! [-]");
+					}else {
+						Console.WriteLine("[-] Failed to get handle of in-memory module! [-]");
 					}
 	    		}else {
 	    			Console.WriteLine("[-] Reading original DLL from disk failed! [-]");
