@@ -459,9 +459,15 @@ public class SharpUnhooker {
 
     public static void Unhooker(string DLLname) {
     	Console.WriteLine("Unhooking Sequence For {0} Started!", DLLname);
-		string DLLfile = (@"C:\Windows\System32\" + DLLname);
     	// get original .text section from original DLL
-    	byte[] DLLBytes = System.IO.File.ReadAllBytes(DLLfile);
+    	string DLLFullPath;
+    	try {
+    		// not only get the full path of the DLL,this can prove wether the DLL is loaded or not
+			DLLFullPath = (Process.GetCurrentProcess().Modules.Cast<ProcessModule>().Where(x => DLLname.Equals(Path.GetFileName(x.FileName), StringComparison.OrdinalIgnoreCase)).FirstOrDefault().FileName);
+    	}catch {
+    		throw new InvalidOperationException("DLL is not loaded!");
+    	}
+    	byte[] DLLBytes = System.IO.File.ReadAllBytes(DLLFullPath);
         PEReader OriginalDLL = new PEReader(DLLBytes);
 		Console.WriteLine("Reading Original DLL...");
         // just to be safe,i allocate as big as the DLL :')
@@ -482,6 +488,7 @@ public class SharpUnhooker {
                 if (assemblyBytes != null && assemblyBytes.Length > 0) {
 					Console.WriteLine("Yay!Original DLL Readed.");
 					Console.WriteLine("Getting in-memory module handle...");
+					// use C#'s managed API instead of GetModuleHandle API
 					IntPtr ModuleHandleInMemory = (Process.GetCurrentProcess().Modules.Cast<ProcessModule>().Where(x => DLLname.Equals(Path.GetFileName(x.FileName), StringComparison.OrdinalIgnoreCase)).FirstOrDefault().BaseAddress);
 					if (ModuleHandleInMemory != IntPtr.Zero) {
 						Console.WriteLine("Yay!Got module handle : {0}", ModuleHandleInMemory.ToString("X4"));
@@ -524,8 +531,14 @@ public class SharpUnhooker {
     public static void SilentUnhooker(string DLLname) {
     	Console.WriteLine("Unhooking Sequence For {0} Started!", DLLname);
     	// get original .text section from original DLL
-    	string DLLfile = (@"C:\Windows\System32\" + DLLname);
-    	byte[] DLLBytes = System.IO.File.ReadAllBytes(DLLfile);
+    	string DLLFullPath;
+		try {
+    		// not only get the full path of the DLL,this can prove wether the DLL is loaded or not
+			DLLFullPath = (Process.GetCurrentProcess().Modules.Cast<ProcessModule>().Where(x => DLLname.Equals(Path.GetFileName(x.FileName), StringComparison.OrdinalIgnoreCase)).FirstOrDefault().FileName);
+    	}catch {
+    		throw new InvalidOperationException("DLL is not loaded!");
+    	}
+    	byte[] DLLBytes = System.IO.File.ReadAllBytes(DLLFullPath);
         PEReader OriginalDLL = new PEReader(DLLBytes);
         // just to be safe,i allocate as big as the DLL :')
         IntPtr codebase;
