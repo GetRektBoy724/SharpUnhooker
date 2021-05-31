@@ -32,4 +32,4 @@ This code uses C# 5,so it can be compiled with the built-in CSC from Windows 10.
 
 # To-Do List
 - Implement D\Invoke
-- Add ability to unhook EAT hooks (i find EAT hooking is a bit familiar)
+- Add ability to unhook EAT & IAT hooks
