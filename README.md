@@ -16,7 +16,7 @@ Even though this is a system DLL, since it has been loaded into our process (tha
 # How it works (only for non-skids)
 1. It reads and copies the `.text section` of the original (in-disk) DLL using "PE parser stuff"
 2. It patches the `.text section` of the loaded DLL using `Marshal.Copy` and `VirtualProtect`(to changes the permission of the memory)
-3. It checks the patched in-memory DLL by reading it and compare it with the original one.
+3. It checks the patched in-memory DLL by reading it and compare it with the original one to see if its correctly patched.
 
 # Notes
 - If you want to copy the code,Pls dont change/remove the banner
