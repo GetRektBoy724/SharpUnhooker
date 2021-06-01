@@ -18,9 +18,8 @@ Even though this is a system DLL, since it has been loaded into our process (tha
 2. It patches the `.text section` of the loaded DLL using `Marshal.Copy` and `VirtualProtect`(to changes the permission of the memory)
 3. It checks the patched in-memory DLL by reading it and compare it with the original one to see if its correctly patched.
 
-# Notes
+# Note
 - If you want to copy the code,Pls dont change/remove the banner
-- My Sublime kinda fucked up the Indentation so dont roast me,but its still works tho
 
 # Usage
 Simply load the pre-compiled DLL or add the code function and call the main function from the SharpUnhooker class.
