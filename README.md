@@ -7,8 +7,8 @@ This tool is inspired by [this article](https://www.ired.team/offensive-security
 
 # How it works (only for non-skids)
 1. It reads and copies the `.text section` of the original (in-disk) DLL using "PE parser stuff"
-2. It patches the `.text section` of the loaded DLL using `Marshal.Copy` and `VirtualProtect`(to changes the permission of the memory)
-3. It checks the patched in-memory DLL by reading it and compare it with the original one to see if its correctly patched.
+2. It patches the `.text section` of the loaded DLL using `Marshal.Copy` and `NtProtectVirtualMemory` from D/Invoke (to changes the permission of the memory)
+3. It checks the patched in-memory DLL by reading it again and compare it with the original one to see if its correctly patched.
 
 # Note
 - If you want to copy the code,Pls dont change/remove the banner
@@ -18,7 +18,7 @@ Simply load the pre-compiled DLL or add the code function and call the main func
 You can load the pre-compiled DLL on Powershell with `Reflection.Assembly` too!
 This code uses C# 5,so it can be compiled with the built-in CSC from Windows 10.
 
-![SharpUnhookerInAction](https://user-images.githubusercontent.com/41237415/121619620-1702e100-ca93-11eb-9f6d-0eb98d9a87cd.png)
+![SharpUnhookerInAction](https://user-images.githubusercontent.com/41237415/121797559-26c52580-cc4b-11eb-8bce-55e3209a8a51.png)
 
 
 
