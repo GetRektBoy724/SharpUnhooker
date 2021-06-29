@@ -3,7 +3,7 @@ C# Based Universal API Unhooker - Automatically Unhook API Hives (ntdll.dll,kern
 you might want to use the `SilentUnhooker` function instead of the `Unhooker` for stealth reasons.
 This tool is inspired by [this article](https://www.ired.team/offensive-security/defense-evasion/how-to-unhook-a-dll-using-c++).This tool also included with AMSI and ETW patcher to break/disable them.
 
-### This tool is tested on Windows 10 v20H2 
+### This tool is tested on Windows 10 v20H2 x64
 
 # How it works (only for non-skids)
 1. It reads and copies the `.text section` of the original (in-disk) DLL using "PE parser stuff"
