@@ -1089,6 +1089,7 @@ public class SharpUnhooker {
         SilentUnhooker("kernel32.dll");
         SilentUnhooker("user32.dll");
         SilentUnhooker("kernelbase.dll");
+        SilentUnhooker("advapi32.dll");
     	Console.WriteLine("------PHASE 2 == PATCHING AMSI AND ETW------");
     	PatchAMSIAndETW.Main();
     	Console.WriteLine("[+++++++++++!SEQUENCE==FINISHED!+++++++++++]");
