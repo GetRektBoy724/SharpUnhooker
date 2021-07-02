@@ -12,6 +12,7 @@ This tool is inspired by [this article](https://www.ired.team/offensive-security
 
 # Note
 - If you want to copy the code,Pls dont change/remove the banner
+- If you want to see a good demonstration of SharpUnhooker,go check this [research](https://roberreigada.github.io/posts/playing_with_an_edr/) by [Reigada](https://github.com/roberreigada)
 
 # Usage
 Simply load the pre-compiled DLL or add the code function and call the main function from the SharpUnhooker class.
