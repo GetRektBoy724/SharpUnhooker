@@ -1,5 +1,5 @@
 # SharpUnhooker
-C# Based Universal API Unhooker - Automatically Unhook API Hives (ntdll.dll,kernel32.dll,user32.dll,and kernelbase.dll).
+C# Based Universal API Unhooker - Automatically Unhook API Hives (ntdll.dll,kernel32.dll,user32.dll,advapi32.dll,and kernelbase.dll).
 I prefer you to use the Main function but if you want to only unhook single API DLL,you can use the `SilentUnhooker` and `Unhooker` function.You might want to use the `SilentUnhooker` function instead of the `Unhooker` for stealth reasons.
 This tool is inspired by [this article](https://www.ired.team/offensive-security/defense-evasion/how-to-unhook-a-dll-using-c++).This tool also included with AMSI and ETW patcher to break/disable them.
 
