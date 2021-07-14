@@ -11,7 +11,7 @@ This tool is inspired by [this article](https://www.ired.team/offensive-security
 3. It checks the patched in-memory DLL by reading it again and compare it with the original one to see if its correctly patched.
 
 # Note
-- If you want to copy the code,Pls dont change/remove the banner
+- If you want to copy the code,Pls dont change/remove the banner,or atleast dont forget to credit me
 - If you want to see a good demonstration of SharpUnhooker,go check this [blog post](https://roberreigada.github.io/posts/playing_with_an_edr/) by [Reigada](https://github.com/roberreigada)
 - Github dont like my Sublime indentation settings so dont roast me pls
 
