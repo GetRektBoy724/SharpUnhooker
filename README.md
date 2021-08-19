@@ -5,11 +5,6 @@ This tool is inspired by [this article](https://www.ired.team/offensive-security
 
 ### This tool is tested on Windows 10 v20H2 x64
 
-# How it works (only for non-skids)
-1. It reads and copies the `.text section` of the original (in-disk) DLL using "PE parser stuff"
-2. It patches the `.text section` of the loaded DLL using `Marshal.Copy` and `NtProtectVirtualMemory`(Dynamicly invoked) (to changes the permission of the memory)
-3. It checks the patched in-memory DLL by reading it again and compare it with the original one to see if its correctly patched.
-
 # Note
 - If you want to copy the code,Pls dont change/remove the banner,or atleast dont forget to credit me
 - If you want to see a good demonstration of SharpUnhooker,go check this [blog post](https://roberreigada.github.io/posts/playing_with_an_edr/) by [Reigada](https://github.com/roberreigada)
