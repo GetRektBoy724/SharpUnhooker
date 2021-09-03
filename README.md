@@ -1,6 +1,6 @@
 # SharpUnhooker
-C# Based Universal API Unhooker - Automatically Unhook API Hives (ntdll.dll,kernel32.dll,user32.dll,advapi32.dll,and kernelbase.dll).
-I prefer you to use the Main function but if you want to only unhook single API DLL,you can use the `SilentUnhooker` or the `Unhooker` function.You might want to use the `SilentUnhooker` function instead of the `Unhooker` for stealth reasons.
+C# Based Universal API Unhooker - Automatically Unhook API Hives (ntdll.dll, kernel32.dll, advapi32.dll, and kernelbase.dll).
+I prefer you to use the Main function but if you want to only unhook single API DLL,you can use the `SilentUnhooker` or the `Unhooker` function.You might want to use the `SilentUnhooker` function instead of the `Unhooker` for stealth reasons. You can use the `IATCleansing` function cleanse the export address table of an API DLL.
 This tool is inspired by [this article](https://www.ired.team/offensive-security/defense-evasion/how-to-unhook-a-dll-using-c++).This tool also included with AMSI and ETW patcher to break/disable them.
 
 ### This tool is tested on Windows 10 v20H2 x64
@@ -16,8 +16,8 @@ You can load the pre-compiled DLL on Powershell with `Reflection.Assembly` too!
 This code uses C# 5,so it can be compiled with the built-in CSC from Windows 10.
 
 ### SharpUnhooker's Main function in action!
-![SharpUnhookerInAction](https://user-images.githubusercontent.com/41237415/125193982-76facc00-e279-11eb-8af0-357c784f2a69.png)
+![SharpUnhookerInAction](https://user-images.githubusercontent.com/41237415/132009214-0c145b58-830f-45b2-b441-8534ede56541.png)
 
 
 # To-Do List
-- Add ability to unhook EAT & IAT hooks
+- Add ability to unhook IAT hooks
