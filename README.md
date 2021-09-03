@@ -14,6 +14,7 @@ This tool is inspired by [this article](https://www.ired.team/offensive-security
 Simply load the pre-compiled DLL or add the code function and call the main function from the SharpUnhooker class.
 You can load the pre-compiled DLL on Powershell with `Reflection.Assembly` too!
 This code uses C# 5,so it can be compiled with the built-in CSC from Windows 10.
+If you want to test the capability of SharpUnhooker, you can use the `UsageExample` function from `SUUsageExample` class. Its just a simple local shellcode injector.
 
 ### SharpUnhooker's Main function in action!
 ![SharpUnhookerInAction](https://user-images.githubusercontent.com/41237415/132009214-0c145b58-830f-45b2-b441-8534ede56541.png)
