@@ -22,4 +22,4 @@ If you want to test the capability of SharpUnhooker, you can use the `UsageExamp
 
 # To-Do List
 - Add ability to unhook IAT hooks
-- Add ability to unhook inline CLR hooks
+- Add ability to remove hooks from [CLRGuard](https://github.com/endgameinc/ClrGuard/)
