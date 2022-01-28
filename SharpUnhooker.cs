@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.IO;
 
+// this class is needed for parsing the PE
 public class PEReader
 {
     public struct IMAGE_DOS_HEADER
@@ -387,6 +388,7 @@ public class PEReader
 
 }
 
+// Dynamic Invoke class for invoking NT API dynamicly (evades IAT hooking)
 public class Dynavoke {
     // Required NTSTATUSs 
     public enum NTSTATUS : uint {
@@ -772,6 +774,7 @@ public class Dynavoke {
         }
     }
 
+    // GetProcAddress alternative
     public static IntPtr GetExportAddress(IntPtr ModuleBase, string ExportName) {
         IntPtr FunctionPtr = IntPtr.Zero;
         if (ValidateString(ExportName)) {
@@ -844,6 +847,7 @@ public class Dynavoke {
     }
 }
 
+// Patch AMSI and ETW to disable/break them
 public class PatchAMSIAndETW {
 
     // Thx D/Invoke!
@@ -976,6 +980,7 @@ public class PatchAMSIAndETW {
 
 public class SharpUnhooker {
 
+    // JMP/Hot-Patch Unhooker
     public static bool Unhooker(string DLLname) {
     	Console.WriteLine("Unhooking Sequence For {0} Started!", DLLname);
         IntPtr CurrentProcessHandle = new IntPtr(-1); // pseudo-handle for current process handle
@@ -1056,6 +1061,7 @@ public class SharpUnhooker {
         }
     }
 
+    // JMP/Hot-Patch Unhooker
     public static bool SilentUnhooker(string DLLname) {
         IntPtr CurrentProcessHandle = new IntPtr(-1); // pseudo-handle for current process handle
     	// get original .text section from original DLL
@@ -1122,6 +1128,7 @@ public class SharpUnhooker {
         }
     }
 
+    // remove EAT hooks
     public static void EATCleansing(string ModuleName) {
         IntPtr ModuleBase = IntPtr.Zero;
         try { ModuleBase = (Process.GetCurrentProcess().Modules.Cast<ProcessModule>().Where(x => ModuleName.Equals(Path.GetFileName(x.FileName), StringComparison.OrdinalIgnoreCase)).FirstOrDefault().BaseAddress); }catch {}
